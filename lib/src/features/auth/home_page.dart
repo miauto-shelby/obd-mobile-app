@@ -64,8 +64,15 @@ class HomePage extends StatelessWidget {
                           ),
                         ),
                         TextButton.icon(
-                          onPressed: () {
-                            onLogout();
+                          onPressed: () async {
+                            try {
+                              await onLogout();
+                            } catch (error) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(error.toString())),
+                              );
+                            }
                           },
                           icon: const Icon(Icons.logout_rounded),
                           label: const Text('Salir'),

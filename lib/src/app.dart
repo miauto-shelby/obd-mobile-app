@@ -4,9 +4,12 @@ import 'features/auth/auth_models.dart';
 import 'features/auth/auth_service.dart';
 import 'features/auth/home_page.dart';
 import 'features/auth/login_page.dart';
+import 'features/auth/session_storage.dart';
 
 class ObdMobileApp extends StatefulWidget {
-  const ObdMobileApp({super.key});
+  const ObdMobileApp({super.key, this.sessionStorage});
+
+  final SessionStorage? sessionStorage;
 
   @override
   State<ObdMobileApp> createState() => _ObdMobileAppState();
@@ -17,13 +20,43 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
   static const String _defaultGoogleServerClientId =
       '1001362850388-h14mgg5umq5cdopv2qdbkj3fud4u31th.apps.googleusercontent.com';
 
-  late final AuthService _authService = AuthService(
-    apiBaseUrl: _envOrDefault('API_BASE_URL', _defaultApiBaseUrl),
-    googleClientId: _optionalEnv('GOOGLE_CLIENT_ID'),
-    googleServerClientId:
-        _optionalEnv('GOOGLE_SERVER_CLIENT_ID') ?? _defaultGoogleServerClientId,
-  );
+  late final AuthService _authService;
   AuthSession? _session;
+  var _isRestoringSession = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = AuthService(
+      apiBaseUrl: _envOrDefault('API_BASE_URL', _defaultApiBaseUrl),
+      googleClientId: _optionalEnv('GOOGLE_CLIENT_ID'),
+      googleServerClientId:
+          _optionalEnv('GOOGLE_SERVER_CLIENT_ID') ??
+          _defaultGoogleServerClientId,
+      sessionStorage: widget.sessionStorage,
+    );
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    try {
+      final session = await _authService.restoreAndValidateSession();
+      if (!mounted) return;
+      setState(() {
+        _session = session;
+      });
+    } catch (error) {
+      debugPrint(
+        'No fue posible restaurar la sesión local: ${error.runtimeType}',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRestoringSession = false;
+        });
+      }
+    }
+  }
 
   String _envOrDefault(String name, String defaultValue) {
     final value = String.fromEnvironment(name);
@@ -45,12 +78,15 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
   }
 
   Future<void> _handleLogout() async {
-    await _authService.signOut();
-    if (!mounted) return;
-
-    setState(() {
-      _session = null;
-    });
+    try {
+      await _authService.signOut();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _session = null;
+        });
+      }
+    }
   }
 
   @override
@@ -68,19 +104,21 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
         scaffoldBackgroundColor: const Color(0xFF07111F),
         useMaterial3: true,
       ),
-      home: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        child: _session == null
-            ? LoginPage(
-                key: const ValueKey('login-page'),
-                onGoogleLogin: _handleGoogleLogin,
-              )
-            : HomePage(
-                key: const ValueKey('home-page'),
-                session: _session!,
-                onLogout: _handleLogout,
-              ),
-      ),
+      home: _isRestoringSession
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: _session == null
+                  ? LoginPage(
+                      key: const ValueKey('login-page'),
+                      onGoogleLogin: _handleGoogleLogin,
+                    )
+                  : HomePage(
+                      key: const ValueKey('home-page'),
+                      session: _session!,
+                      onLogout: _handleLogout,
+                    ),
+            ),
     );
   }
 }

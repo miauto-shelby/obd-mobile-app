@@ -27,11 +27,9 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      debugPrint('LoginPage: before onGoogleLogin');
       await widget.onGoogleLogin();
-      debugPrint('LoginPage: onGoogleLogin completed');
     } catch (error) {
-      debugPrint('LoginPage: onGoogleLogin error -> $error');
+      debugPrint('LoginPage: Google login failed (${error.runtimeType}).');
       setState(() {
         _errorMessage = error.toString();
       });
@@ -63,7 +61,10 @@ class _LoginPageState extends State<LoginPage> {
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 420),
                       child: Column(
@@ -163,7 +164,7 @@ class _LoginPageState extends State<LoginPage> {
                                   fontSize: 15.5,
                                   fontWeight: FontWeight.w700,
                                 ),
-                                  ),
+                              ),
                               icon: _isLoading
                                   ? const SizedBox(
                                       width: 18,
@@ -239,7 +240,9 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: _isLoading
                                   ? null
                                   : () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text(
                                             'Registro por correo disponible en una siguiente etapa.',
@@ -305,12 +308,7 @@ class _LogoBadge extends StatelessWidget {
           child: SizedBox(
             width: innerSize,
             height: innerSize,
-            child: ClipOval(
-              child: Image.asset(
-                assetPath,
-                fit: BoxFit.contain,
-              ),
-            ),
+            child: ClipOval(child: Image.asset(assetPath, fit: BoxFit.contain)),
           ),
         ),
       ),
@@ -336,10 +334,7 @@ class _InlineMessage extends StatelessWidget {
       ),
       child: Text(
         message,
-        style: const TextStyle(
-          color: Color(0xFF8B0000),
-          fontSize: 13,
-        ),
+        style: const TextStyle(color: Color(0xFF8B0000), fontSize: 13),
         textAlign: TextAlign.center,
       ),
     );
