@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'config/app_configuration.dart';
 import 'features/auth/auth_models.dart';
 import 'features/auth/auth_service.dart';
 import 'features/auth/home_page.dart';
@@ -7,19 +8,20 @@ import 'features/auth/login_page.dart';
 import 'features/auth/session_storage.dart';
 
 class ObdMobileApp extends StatefulWidget {
-  const ObdMobileApp({super.key, this.sessionStorage});
+  ObdMobileApp({
+    super.key,
+    this.sessionStorage,
+    AppConfiguration? configuration,
+  }) : configuration = configuration ?? AppConfiguration.fromDartDefines();
 
   final SessionStorage? sessionStorage;
+  final AppConfiguration configuration;
 
   @override
   State<ObdMobileApp> createState() => _ObdMobileAppState();
 }
 
 class _ObdMobileAppState extends State<ObdMobileApp> {
-  static const String _defaultApiBaseUrl = 'http://127.0.0.1:8080';
-  static const String _defaultGoogleServerClientId =
-      '1001362850388-h14mgg5umq5cdopv2qdbkj3fud4u31th.apps.googleusercontent.com';
-
   late final AuthService _authService;
   AuthSession? _session;
   var _isRestoringSession = true;
@@ -28,11 +30,9 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
   void initState() {
     super.initState();
     _authService = AuthService(
-      apiBaseUrl: _envOrDefault('API_BASE_URL', _defaultApiBaseUrl),
-      googleClientId: _optionalEnv('GOOGLE_CLIENT_ID'),
-      googleServerClientId:
-          _optionalEnv('GOOGLE_SERVER_CLIENT_ID') ??
-          _defaultGoogleServerClientId,
+      apiBaseUrl: widget.configuration.apiBaseUrl,
+      googleClientId: widget.configuration.googleClientId,
+      googleServerClientId: widget.configuration.googleServerClientId,
       sessionStorage: widget.sessionStorage,
     );
     _restoreSession();
@@ -56,16 +56,6 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
         });
       }
     }
-  }
-
-  String _envOrDefault(String name, String defaultValue) {
-    final value = String.fromEnvironment(name);
-    return value.isEmpty ? defaultValue : value;
-  }
-
-  String? _optionalEnv(String name) {
-    final value = String.fromEnvironment(name);
-    return value.isEmpty ? null : value;
   }
 
   Future<void> _handleGoogleLogin() async {
