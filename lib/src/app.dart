@@ -107,6 +107,7 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
                       key: const ValueKey('home-page'),
                       session: _session!,
                       onLogout: _handleLogout,
+                      apiBaseUrl: widget.configuration.apiBaseUrl,
                     ),
             ),
     );
