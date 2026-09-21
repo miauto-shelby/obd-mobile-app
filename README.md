@@ -67,6 +67,20 @@ Después de completar una sola vez el asistente inicial de Android Studio y las 
 
 No copies archivos `.env`, URI de Atlas, contraseñas ni secretos desde otro equipo. Este modo crea una base de datos local para pruebas.
 
+## Validación en iPhone desde un Mac
+
+La preparación iOS vive en la rama `feature/ios-local-validation`. Para esta validación se usa Docker en el Mac para el backend y la base de datos local. El iPhone debe estar en la misma red Wi-Fi del Mac; no existe una equivalencia de `adb reverse` para iPhone.
+
+La app permite HTTP únicamente en la compilación Debug de esta rama para poder llegar al backend Docker local. La compilación Release mantiene la configuración segura normal.
+
+La persona que valida necesita completar una vez Xcode, su cuenta Apple, la confianza del iPhone y Developer Mode. Después debe ejecutar desde el repositorio `obd-platform`:
+
+```bash
+bash scripts/iniciar-pruebas-ios-local.sh /ruta/a/obd-mobile-app
+```
+
+El acceso con Google en iPhone se configurará después en Google Cloud. Hasta ese momento, esta rama permite validar compilación, instalación, conexión local y pantallas; el login Google no se considera validado en iPhone todavía.
+
 ## Variables por ambiente
 
 El Client ID de Google identifica la aplicación, pero no es un secreto. Nunca incluyas `MONGODB_URI`, `MONGODB_PASSWORD` ni `JWT_SECRET` en estos comandos o en el repositorio: pertenecen únicamente al backend.
