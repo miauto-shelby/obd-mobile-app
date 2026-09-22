@@ -79,7 +79,7 @@ La persona que valida necesita completar una vez Xcode, su cuenta Apple, la conf
 bash scripts/iniciar-pruebas-ios-local.sh /ruta/a/obd-mobile-app
 ```
 
-El acceso con Google en iPhone se configurará después en Google Cloud. Hasta ese momento, esta rama permite validar compilación, instalación, conexión local y pantallas; el login Google no se considera validado en iPhone todavía.
+El cliente OAuth iOS de desarrollo está configurado en `Info-Debug.plist`; sus IDs públicos no son secretos. El acceso se limita a los usuarios de prueba configurados en Google Cloud. La app Release no usa este archivo ni permite HTTP local.
 
 ## Variables por ambiente
 
