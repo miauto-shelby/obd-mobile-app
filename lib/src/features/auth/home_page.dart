@@ -752,7 +752,9 @@ class _MileageCard extends StatelessWidget {
               ),
             ),
             Text(
-              '${vehicle.currentMileage} km',
+              vehicle.currentMileage == null
+                  ? 'Sin lectura OBD2'
+                  : '${vehicle.currentMileage} km',
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ],

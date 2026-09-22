@@ -23,7 +23,7 @@ class Vehicle {
   final String? engine;
   final String? fuelType;
   final String? transmission;
-  final int currentMileage;
+  final int? currentMileage;
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
@@ -37,8 +37,9 @@ class Vehicle {
       engine: json['engine']?.toString(),
       fuelType: json['fuelType']?.toString(),
       transmission: json['transmission']?.toString(),
-      currentMileage:
-          int.tryParse(json['currentMileage']?.toString() ?? '') ?? 0,
+      currentMileage: json['currentMileage'] == null
+          ? null
+          : int.tryParse(json['currentMileage'].toString()),
     );
   }
 }

@@ -52,7 +52,6 @@ class VehicleService {
     required String brand,
     required String model,
     required int year,
-    required int currentMileage,
     String? engine,
     String? fuelType,
     String? transmission,
@@ -69,7 +68,6 @@ class VehicleService {
               'brand': brand,
               'model': model,
               'year': year,
-              'currentMileage': currentMileage,
               'engine': engine,
               'fuelType': fuelType,
               'transmission': transmission,
@@ -90,6 +88,49 @@ class VehicleService {
     } catch (_) {
       throw const VehicleException(
         'No fue posible guardar el vehículo. Verifica la conexión con el servidor.',
+      );
+    }
+  }
+
+  Future<Vehicle> updateProfile({
+    required AuthSession session,
+    required String vehicleId,
+    String? nickname,
+    required String brand,
+    required String model,
+    String? engine,
+    String? fuelType,
+    String? transmission,
+  }) async {
+    try {
+      final response = await _client
+          .patch(
+            Uri.parse('$apiBaseUrl/api/v1/vehicles/$vehicleId'),
+            headers: _headers(session),
+            body: jsonEncode({
+              'nickname': nickname,
+              'brand': brand,
+              'model': model,
+              'engine': engine,
+              'fuelType': fuelType,
+              'transmission': transmission,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+      final body = _decode(response.body);
+      if (response.statusCode != 200) {
+        throw VehicleException(_messageFor(body, response.statusCode));
+      }
+      return Vehicle.fromJson(body);
+    } on TimeoutException {
+      throw const VehicleException(
+        'El servidor tardó demasiado. Inténtalo de nuevo.',
+      );
+    } on VehicleException {
+      rethrow;
+    } catch (_) {
+      throw const VehicleException(
+        'No fue posible actualizar el vehículo. Verifica la conexión con el servidor.',
       );
     }
   }
