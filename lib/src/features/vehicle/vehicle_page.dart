@@ -46,6 +46,19 @@ class _VehiclePageState extends State<VehiclePage> {
     if (created == true) _reload();
   }
 
+  Future<void> _openVehicleDetail(Vehicle vehicle) async {
+    final updated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => _VehicleDetailPage(
+          session: widget.session,
+          service: _service,
+          vehicleId: vehicle.vehicleId,
+        ),
+      ),
+    );
+    if (updated == true) _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,8 +99,10 @@ class _VehiclePageState extends State<VehiclePage> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 96),
             itemCount: vehicles.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) =>
-                _VehicleCard(vehicle: vehicles[index]),
+            itemBuilder: (context, index) => _VehicleCard(
+              vehicle: vehicles[index],
+              onTap: () => _openVehicleDetail(vehicles[index]),
+            ),
           );
         },
       ),
@@ -134,9 +149,10 @@ class _EmptyVehicles extends StatelessWidget {
 }
 
 class _VehicleCard extends StatelessWidget {
-  const _VehicleCard({required this.vehicle});
+  const _VehicleCard({required this.vehicle, required this.onTap});
 
   final Vehicle vehicle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -144,41 +160,279 @@ class _VehicleCard extends StatelessWidget {
       color: Colors.white,
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAF3FF),
-                borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF3FF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.directions_car_filled_rounded,
+                  color: Color(0xFF0677F9),
+                ),
               ),
-              child: const Icon(
-                Icons.directions_car_filled_rounded,
-                color: Color(0xFF0677F9),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${vehicle.brand} ${vehicle.model}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF172033),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${vehicle.plate}  ·  ${vehicle.year}  ·  ${vehicle.currentMileage} km',
+                      style: const TextStyle(color: Color(0xFF687285)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VehicleDetailPage extends StatefulWidget {
+  const _VehicleDetailPage({
+    required this.session,
+    required this.service,
+    required this.vehicleId,
+  });
+
+  final AuthSession session;
+  final VehicleService service;
+  final String vehicleId;
+
+  @override
+  State<_VehicleDetailPage> createState() => _VehicleDetailPageState();
+}
+
+class _VehicleDetailPageState extends State<_VehicleDetailPage> {
+  late Future<Vehicle> _vehicle;
+
+  @override
+  void initState() {
+    super.initState();
+    _vehicle = widget.service.get(
+      session: widget.session,
+      vehicleId: widget.vehicleId,
+    );
+  }
+
+  void _reload() {
+    setState(() {
+      _vehicle = widget.service.get(
+        session: widget.session,
+        vehicleId: widget.vehicleId,
+      );
+    });
+  }
+
+  Future<void> _editVin(Vehicle vehicle) async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _VinForm(
+        session: widget.session,
+        service: widget.service,
+        vehicle: vehicle,
+      ),
+    );
+    if (updated == true) _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFD),
+      appBar: AppBar(
+        title: const Text('Detalle del vehículo'),
+        backgroundColor: const Color(0xFFF8FAFD),
+        foregroundColor: const Color(0xFF172033),
+        elevation: 0,
+      ),
+      body: FutureBuilder<Vehicle>(
+        future: _vehicle,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return _VehicleError(
+              message: snapshot.error.toString(),
+              onRetry: _reload,
+            );
+          }
+          final vehicle = snapshot.data!;
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              _VehicleInfoCard(vehicle: vehicle),
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.confirmation_number_outlined),
+                  title: const Text('VIN'),
+                  subtitle: Text(vehicle.vin ?? 'Pendiente de registrar'),
+                  trailing: const Icon(Icons.edit_outlined),
+                  onTap: () => _editVin(vehicle),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Por ahora puedes completar el VIN. Las lecturas OBD2 se agregarán cuando el adaptador esté definido.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF687285), height: 1.4),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _VehicleInfoCard extends StatelessWidget {
+  const _VehicleInfoCard({required this.vehicle});
+
+  final Vehicle vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              vehicle.nickname ?? '${vehicle.brand} ${vehicle.model}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text('${vehicle.plate} · ${vehicle.year}'),
+            const Divider(height: 28),
+            Text('Kilometraje registrado: ${vehicle.currentMileage} km'),
+            if (vehicle.engine != null) Text('Motor: ${vehicle.engine}'),
+            if (vehicle.fuelType != null)
+              Text('Combustible: ${vehicle.fuelType}'),
+            if (vehicle.transmission != null)
+              Text('Transmisión: ${vehicle.transmission}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VinForm extends StatefulWidget {
+  const _VinForm({
+    required this.session,
+    required this.service,
+    required this.vehicle,
+  });
+
+  final AuthSession session;
+  final VehicleService service;
+  final Vehicle vehicle;
+
+  @override
+  State<_VinForm> createState() => _VinFormState();
+}
+
+class _VinFormState extends State<_VinForm> {
+  late final TextEditingController _vin;
+  var _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _vin = TextEditingController(text: widget.vehicle.vin ?? '');
+  }
+
+  @override
+  void dispose() {
+    _vin.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await widget.service.updateVin(
+        session: widget.session,
+        vehicleId: widget.vehicle.vehicleId,
+        vin: _vin.text.trim().isEmpty ? null : _vin.text.trim(),
+      );
+      if (mounted) Navigator.pop(context, true);
+    } on VehicleException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          MediaQuery.viewInsetsOf(context).bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Registrar VIN',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            const Text('Déjalo vacío si aún no lo tienes.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _vin,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'VIN',
+                border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${vehicle.brand} ${vehicle.model}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF172033),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${vehicle.plate}  ·  ${vehicle.year}  ·  ${vehicle.currentMileage} km',
-                    style: const TextStyle(color: Color(0xFF687285)),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text('Guardar VIN'),
             ),
           ],
         ),

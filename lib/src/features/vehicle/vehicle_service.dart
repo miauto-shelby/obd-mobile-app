@@ -94,6 +94,66 @@ class VehicleService {
     }
   }
 
+  Future<Vehicle> get({
+    required AuthSession session,
+    required String vehicleId,
+  }) async {
+    try {
+      final response = await _client
+          .get(
+            Uri.parse('$apiBaseUrl/api/v1/vehicles/$vehicleId'),
+            headers: _headers(session),
+          )
+          .timeout(const Duration(seconds: 12));
+      final body = _decode(response.body);
+      if (response.statusCode != 200) {
+        throw VehicleException(_messageFor(body, response.statusCode));
+      }
+      return Vehicle.fromJson(body);
+    } on TimeoutException {
+      throw const VehicleException(
+        'El servidor tardó demasiado. Inténtalo de nuevo.',
+      );
+    } on VehicleException {
+      rethrow;
+    } catch (_) {
+      throw const VehicleException(
+        'No fue posible consultar el vehículo. Verifica la conexión con el servidor.',
+      );
+    }
+  }
+
+  Future<Vehicle> updateVin({
+    required AuthSession session,
+    required String vehicleId,
+    String? vin,
+  }) async {
+    try {
+      final response = await _client
+          .patch(
+            Uri.parse('$apiBaseUrl/api/v1/vehicles/$vehicleId/vin'),
+            headers: _headers(session),
+            body: jsonEncode({'vin': vin}),
+          )
+          .timeout(const Duration(seconds: 12));
+      final body = _decode(response.body);
+      if (response.statusCode != 200) {
+        throw VehicleException(_messageFor(body, response.statusCode));
+      }
+      return Vehicle.fromJson(body);
+    } on TimeoutException {
+      throw const VehicleException(
+        'El servidor tardó demasiado. Inténtalo de nuevo.',
+      );
+    } on VehicleException {
+      rethrow;
+    } catch (_) {
+      throw const VehicleException(
+        'No fue posible actualizar el VIN. Verifica la conexión con el servidor.',
+      );
+    }
+  }
+
   Map<String, String> _headers(AuthSession session) => {
     'Content-Type': 'application/json',
     'Authorization': '${session.tokenType} ${session.accessToken}',
@@ -115,6 +175,9 @@ class VehicleService {
     }
     if (code == 'VALIDATION_ERROR') {
       return body['message']?.toString() ?? 'Revisa los datos del vehículo.';
+    }
+    if (code == 'VEHICLE_NOT_FOUND' || statusCode == 404) {
+      return 'No encontramos este vehículo en tu cuenta.';
     }
     if (statusCode == 401) {
       return 'Tu sesión expiró. Vuelve a iniciar sesión.';
