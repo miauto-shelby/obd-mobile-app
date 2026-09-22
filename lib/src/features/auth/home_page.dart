@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'auth_models.dart';
+import '../vehicle/vehicle_models.dart';
 import '../vehicle/vehicle_page.dart';
+import '../vehicle/vehicle_service.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -48,10 +50,7 @@ class HomePage extends StatelessWidget {
                           _AppHeader(session: session, onLogout: onLogout),
                           const SizedBox(height: 28),
                           _VehicleWelcomeCard(
-                            onConnect: () => _showPendingAction(
-                              context,
-                              'La conexión OBD2 estará disponible en el siguiente módulo.',
-                            ),
+                            onConnect: () => _openDiagnostics(context),
                           ),
                           const SizedBox(height: 28),
                           const _SectionTitle(
@@ -76,10 +75,7 @@ class HomePage extends StatelessWidget {
                                     title: 'Conectar OBD2',
                                     description:
                                         'Vincula el adaptador del vehículo.',
-                                    onTap: () => _showPendingAction(
-                                      context,
-                                      'La conexión OBD2 estará disponible en el siguiente módulo.',
-                                    ),
+                                    onTap: () => _openDiagnostics(context),
                                   ),
                                   _ActionCard(
                                     width: compact
@@ -91,14 +87,7 @@ class HomePage extends StatelessWidget {
                                     title: 'Mi vehículo',
                                     description:
                                         'Agrega los datos de tu vehículo.',
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => VehiclePage(
-                                          session: session,
-                                          apiBaseUrl: apiBaseUrl,
-                                        ),
-                                      ),
-                                    ),
+                                    onTap: () => _openVehicles(context),
                                   ),
                                   _ActionCard(
                                     width: compact
@@ -110,10 +99,7 @@ class HomePage extends StatelessWidget {
                                     title: 'Escanear errores',
                                     description:
                                         'Lee alertas cuando conectes el OBD2.',
-                                    onTap: () => _showPendingAction(
-                                      context,
-                                      'El escaneo estará disponible después de integrar OBD2.',
-                                    ),
+                                    onTap: () => _openDiagnostics(context),
                                   ),
                                 ],
                               );
@@ -130,7 +116,14 @@ class HomePage extends StatelessWidget {
                           const SizedBox(height: 28),
                           _SessionCard(session: session),
                           const SizedBox(height: 28),
-                          const _BottomNavigation(),
+                          _BottomNavigation(
+                            onHome: () => Navigator.of(
+                              context,
+                            ).popUntil((route) => route.isFirst),
+                            onVehicle: () => _openVehicles(context),
+                            onMileage: () => _openMileage(context),
+                            onProfile: () => _openProfile(context),
+                          ),
                         ],
                       ),
                     ),
@@ -144,10 +137,34 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  void _showPendingAction(BuildContext context, String message) {
-    ScaffoldMessenger.of(
+  void _openVehicles(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => VehiclePage(session: session, apiBaseUrl: apiBaseUrl),
+      ),
+    );
+  }
+
+  void _openMileage(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _MileagePage(session: session, apiBaseUrl: apiBaseUrl),
+      ),
+    );
+  }
+
+  void _openDiagnostics(BuildContext context) {
+    Navigator.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ).push(MaterialPageRoute<void>(builder: (_) => const _DiagnosticsPage()));
+  }
+
+  void _openProfile(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _ProfilePage(session: session, onLogout: onLogout),
+      ),
+    );
   }
 }
 
@@ -542,7 +559,17 @@ class _SessionCard extends StatelessWidget {
 }
 
 class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation();
+  const _BottomNavigation({
+    required this.onHome,
+    required this.onVehicle,
+    required this.onMileage,
+    required this.onProfile,
+  });
+
+  final VoidCallback onHome;
+  final VoidCallback onVehicle;
+  final VoidCallback onMileage;
+  final VoidCallback onProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -553,23 +580,36 @@ class _BottomNavigation extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFD9E2EE)),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Expanded(
             child: _NavigationItem(
               icon: Icons.home_outlined,
               label: 'Inicio',
               active: true,
+              onTap: onHome,
             ),
           ),
           Expanded(
             child: _NavigationItem(
               icon: Icons.directions_car_outlined,
               label: 'Vehículo',
+              onTap: onVehicle,
             ),
           ),
           Expanded(
-            child: _NavigationItem(icon: Icons.person_outline, label: 'Perfil'),
+            child: _NavigationItem(
+              icon: Icons.speed_outlined,
+              label: 'Kilometraje',
+              onTap: onMileage,
+            ),
+          ),
+          Expanded(
+            child: _NavigationItem(
+              icon: Icons.person_outline,
+              label: 'Perfil',
+              onTap: onProfile,
+            ),
           ),
         ],
       ),
@@ -581,32 +621,328 @@ class _NavigationItem extends StatelessWidget {
   const _NavigationItem({
     required this.icon,
     required this.label,
+    required this.onTap,
     this.active = false,
   });
 
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
   final bool active;
 
   @override
   Widget build(BuildContext context) {
     final color = active ? HomePage._blue : const Color(0xFF6E7787);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MileagePage extends StatefulWidget {
+  const _MileagePage({required this.session, required this.apiBaseUrl});
+
+  final AuthSession session;
+  final String apiBaseUrl;
+
+  @override
+  State<_MileagePage> createState() => _MileagePageState();
+}
+
+class _MileagePageState extends State<_MileagePage> {
+  late final VehicleService _service;
+  late Future<List<Vehicle>> _vehicles;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = VehicleService(apiBaseUrl: widget.apiBaseUrl);
+    _vehicles = _service.list(widget.session);
+  }
+
+  void _reload() {
+    setState(() => _vehicles = _service.list(widget.session));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFD),
+      appBar: AppBar(
+        title: const Text('Kilometraje'),
+        backgroundColor: const Color(0xFFF8FAFD),
+        foregroundColor: HomePage._ink,
+        elevation: 0,
+      ),
+      body: FutureBuilder<List<Vehicle>>(
+        future: _vehicles,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return _SimpleError(
+              message: snapshot.error.toString(),
+              onRetry: _reload,
+            );
+          }
+          final vehicles = snapshot.data ?? const [];
+          if (vehicles.isEmpty) {
+            return const _EmptyMileage();
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(20),
+            itemCount: vehicles.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (_, index) => _MileageCard(vehicle: vehicles[index]),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MileageCard extends StatelessWidget {
+  const _MileageCard({required this.vehicle});
+
+  final Vehicle vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            const Icon(Icons.speed_rounded, color: HomePage._blue, size: 32),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${vehicle.brand} ${vehicle.model}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    vehicle.plate,
+                    style: const TextStyle(color: Color(0xFF687285)),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${vehicle.currentMileage} km',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyMileage extends StatelessWidget {
+  const _EmptyMileage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32),
+        child: Text(
+          'Cuando agregues un vehículo, aquí verás el kilometraje que registraste. Las lecturas automáticas se habilitarán con el adaptador OBD2.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF687285), height: 1.4),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiagnosticsPage extends StatelessWidget {
+  const _DiagnosticsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFD),
+      appBar: AppBar(
+        title: const Text('Diagnóstico OBD2'),
+        backgroundColor: const Color(0xFFF8FAFD),
+        foregroundColor: HomePage._ink,
+        elevation: 0,
+      ),
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.bluetooth_searching_rounded,
+                color: HomePage._blue,
+                size: 64,
+              ),
+              SizedBox(height: 18),
+              Text(
+                'Diagnóstico en preparación',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Esta pantalla quedará lista para conectar el adaptador, leer errores y mostrar alertas cuando se confirme el modelo de OBD2 compatible.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF687285), height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfilePage extends StatelessWidget {
+  const _ProfilePage({required this.session, required this.onLogout});
+
+  final AuthSession session;
+  final Future<void> Function() onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = session.user;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFD),
+      appBar: AppBar(
+        title: const Text('Mi perfil'),
+        backgroundColor: const Color(0xFFF8FAFD),
+        foregroundColor: HomePage._ink,
+        elevation: 0,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+          _ProfileIdentity(user: user),
+          const SizedBox(height: 16),
+          const Card(
+            child: ListTile(
+              leading: Icon(
+                Icons.verified_user_outlined,
+                color: HomePage._blue,
+              ),
+              title: Text('Cuenta protegida'),
+              subtitle: Text('Tu inicio de sesión está validado con Google.'),
             ),
           ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: () async {
+              try {
+                await onLogout();
+                if (context.mounted) Navigator.pop(context);
+              } catch (error) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(error.toString())));
+                }
+              }
+            },
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('Cerrar sesión'),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileIdentity extends StatelessWidget {
+  const _ProfileIdentity({required this.user});
+
+  final AuthUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            _UserAvatar(user: user),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.fullName.isEmpty ? 'Usuario My Auto' : user.fullName,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    user.email.isEmpty ? 'Cuenta Google' : user.email,
+                    style: const TextStyle(color: Color(0xFF687285)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SimpleError extends StatelessWidget {
+  const _SimpleError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 52,
+              color: Color(0xFF6E7787),
+            ),
+            const SizedBox(height: 14),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            OutlinedButton(onPressed: onRetry, child: const Text('Reintentar')),
+          ],
+        ),
       ),
     );
   }
