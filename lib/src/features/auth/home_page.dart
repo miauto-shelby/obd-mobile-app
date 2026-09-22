@@ -114,7 +114,10 @@ class HomePage extends StatelessWidget {
                           const SizedBox(height: 14),
                           const _VehicleStatusCard(),
                           const SizedBox(height: 28),
-                          _SessionCard(session: session),
+                          _SessionCard(
+                            session: session,
+                            onTap: () => _openProfile(context),
+                          ),
                           const SizedBox(height: 28),
                           _BottomNavigation(
                             onHome: () => Navigator.of(
@@ -508,51 +511,60 @@ class _MetricDivider extends StatelessWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session});
+  const _SessionCard({required this.session, required this.onTap});
 
   final AuthSession session;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final email = session.user.email.trim();
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F7FF),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.verified_user_outlined, color: HomePage._blue),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Sesión protegida',
-                  style: TextStyle(
-                    color: HomePage._ink,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  email.isEmpty
-                      ? 'Cuenta validada con Google'
-                      : 'Cuenta validada: $email',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF66748B),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F7FF),
+            borderRadius: BorderRadius.circular(20),
           ),
-          const Icon(Icons.chevron_right_rounded, color: Color(0xFF718096)),
-        ],
+          child: Row(
+            children: [
+              const Icon(Icons.verified_user_outlined, color: HomePage._blue),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Sesión protegida',
+                      style: TextStyle(
+                        color: HomePage._ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      email.isEmpty
+                          ? 'Cuenta validada con Google'
+                          : 'Cuenta validada: $email',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF66748B),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF718096)),
+            ],
+          ),
+        ),
       ),
     );
   }

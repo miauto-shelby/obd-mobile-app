@@ -67,4 +67,74 @@ void main() {
     expect(find.text('Estado del vehículo'), findsOneWidget);
     expect(find.text('Sesión protegida'), findsOneWidget);
   });
+
+  testWidgets('opens the profile and closes the session from the menu', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var logoutCalled = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomePage(
+          session: _session,
+          onLogout: () async => logoutCalled = true,
+          apiBaseUrl: 'http://127.0.0.1:8080',
+        ),
+      ),
+    );
+
+    final profileNavigation = find.ancestor(
+      of: find.text('Sesión protegida'),
+      matching: find.byType(InkWell),
+    );
+    await tester.tap(profileNavigation);
+    await tester.pumpAndSettle();
+    expect(find.text('Mi perfil'), findsOneWidget);
+    expect(find.text('sebastian@example.com'), findsOneWidget);
+
+    await tester.tap(find.text('Cerrar sesión'));
+    await tester.pumpAndSettle();
+    expect(logoutCalled, isTrue);
+  });
+
+  testWidgets('opens the OBD2 diagnostic preparation screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomePage(
+          session: _session,
+          onLogout: () async {},
+          apiBaseUrl: 'http://127.0.0.1:8080',
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Conectar OBD2').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Diagnóstico OBD2'), findsOneWidget);
+    expect(find.text('Diagnóstico en preparación'), findsOneWidget);
+  });
 }
+
+const _session = AuthSession(
+  request: GoogleAuthRequest(
+    idToken: '',
+    deviceId: 'test-device',
+    deviceName: 'Test device',
+    platform: 'ANDROID',
+    appVersion: '1.0.0',
+  ),
+  accessToken: 'access',
+  refreshToken: 'refresh',
+  expiresIn: 900,
+  tokenType: 'Bearer',
+  user: AuthUser(
+    id: 'user-1',
+    firstName: 'Sebastián',
+    lastName: 'Fajardo',
+    email: 'sebastian@example.com',
+    photoUrl: '',
+  ),
+);
