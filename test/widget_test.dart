@@ -114,7 +114,7 @@ void main() {
     await tester.tap(find.text('Conectar OBD2').first);
     await tester.pumpAndSettle();
     expect(find.text('Diagnóstico OBD2'), findsOneWidget);
-    expect(find.text('Diagnóstico en preparación'), findsOneWidget);
+    expect(find.text('Adaptador pendiente'), findsOneWidget);
   });
 }
 

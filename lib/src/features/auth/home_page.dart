@@ -4,6 +4,7 @@ import 'auth_models.dart';
 import '../vehicle/vehicle_models.dart';
 import '../vehicle/vehicle_page.dart';
 import '../vehicle/vehicle_service.dart';
+import '../obd/obd_connection_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -159,7 +160,7 @@ class HomePage extends StatelessWidget {
   void _openDiagnostics(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const _DiagnosticsPage()));
+    ).push(MaterialPageRoute<void>(builder: (_) => const ObdConnectionPage()));
   }
 
   void _openProfile(BuildContext context) {
@@ -788,49 +789,6 @@ class _EmptyMileage extends StatelessWidget {
           'Cuando agregues un vehículo, aquí verás el kilometraje que registraste. Las lecturas automáticas se habilitarán con el adaptador OBD2.',
           textAlign: TextAlign.center,
           style: TextStyle(color: Color(0xFF687285), height: 1.4),
-        ),
-      ),
-    );
-  }
-}
-
-class _DiagnosticsPage extends StatelessWidget {
-  const _DiagnosticsPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFD),
-      appBar: AppBar(
-        title: const Text('Diagnóstico OBD2'),
-        backgroundColor: const Color(0xFFF8FAFD),
-        foregroundColor: HomePage._ink,
-        elevation: 0,
-      ),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.bluetooth_searching_rounded,
-                color: HomePage._blue,
-                size: 64,
-              ),
-              SizedBox(height: 18),
-              Text(
-                'Diagnóstico en preparación',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Esta pantalla quedará lista para conectar el adaptador, leer errores y mostrar alertas cuando se confirme el modelo de OBD2 compatible.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF687285), height: 1.4),
-              ),
-            ],
-          ),
         ),
       ),
     );
