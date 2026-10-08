@@ -1,0 +1,36 @@
+name: Mobile CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Revisar aplicación Flutter
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Descargar el código de la rama
+        uses: actions/checkout@v6
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.6
+          cache: true
+          pub-cache: true
+
+      - name: Instalar dependencias exactas
+        run: flutter pub get
+
+      - name: Analizar el código
+        run: flutter analyze
+
+      - name: Ejecutar pruebas
+        run: flutter test
