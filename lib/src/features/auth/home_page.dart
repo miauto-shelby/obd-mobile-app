@@ -378,14 +378,13 @@ class _ActionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 132),
+            constraints: const BoxConstraints(minHeight: 106),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: const Color(0xFFE5EAF1)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
                 Container(
                   width: 44,
@@ -396,23 +395,36 @@ class _ActionCard extends StatelessWidget {
                   ),
                   child: Icon(icon, color: iconColor, size: 26),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: HomePage._ink,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: HomePage._ink,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        description,
+                        style: const TextStyle(
+                          color: Color(0xFF778195),
+                          height: 1.3,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    color: Color(0xFF778195),
-                    height: 1.3,
-                    fontSize: 12.5,
-                  ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF9AA5B5),
                 ),
               ],
             ),
