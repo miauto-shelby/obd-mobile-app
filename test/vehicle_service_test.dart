@@ -58,6 +58,97 @@ void main() {
     expect(requestBody['nickname'], 'Auto familiar');
     expect(requestBody.containsKey('currentMileage'), isFalse);
   });
+
+  test('explains that a duplicate plate is already registered', () async {
+    final service = VehicleService(
+      apiBaseUrl: 'http://api.test',
+      client: MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'code': 'VEHICLE_ALREADY_EXISTS'}), 409),
+      ),
+    );
+
+    expectLater(
+      service.create(
+        session: _session,
+        plate: 'ABC123',
+        brand: 'Chevrolet',
+        model: 'Onix',
+        year: 2022,
+      ),
+      throwsA(
+        isA<VehicleException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              VehicleErrorKind.duplicatePlate,
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              contains('ya está registrada'),
+            ),
+      ),
+    );
+  });
+
+  test('explains that manual mileage is not accepted', () async {
+    final service = VehicleService(
+      apiBaseUrl: 'http://api.test',
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'code': 'VALIDATION_ERROR',
+            'message':
+                'El kilometraje solo puede llegar desde una lectura OBD2.',
+          }),
+          400,
+        ),
+      ),
+    );
+
+    expectLater(
+      service.create(
+        session: _session,
+        plate: 'ABC123',
+        brand: 'Chevrolet',
+        model: 'Onix',
+        year: 2022,
+      ),
+      throwsA(
+        isA<VehicleException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              VehicleErrorKind.obdOnlyMileage,
+            )
+            .having((error) => error.message, 'message', contains('OBD2')),
+      ),
+    );
+  });
+
+  test('explains when the session is no longer valid', () async {
+    final service = VehicleService(
+      apiBaseUrl: 'http://api.test',
+      client: MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'code': 'INVALID_ACCESS_TOKEN'}), 401),
+      ),
+    );
+
+    expectLater(
+      service.list(_session),
+      throwsA(
+        isA<VehicleException>()
+            .having((error) => error.kind, 'kind', VehicleErrorKind.session)
+            .having(
+              (error) => error.message,
+              'message',
+              contains('sesión venció'),
+            ),
+      ),
+    );
+  });
 }
 
 const _session = AuthSession(

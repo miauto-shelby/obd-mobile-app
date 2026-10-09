@@ -23,7 +23,12 @@ class VehicleService {
           .timeout(const Duration(seconds: 12));
       final body = _decode(response.body);
       if (response.statusCode != 200) {
-        throw VehicleException(_messageFor(body, response.statusCode));
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback:
+              'No fue posible consultar tus vehículos. Inténtalo de nuevo.',
+        );
       }
       final items = body['items'];
       if (items is! List) return const [];
@@ -33,12 +38,19 @@ class VehicleService {
           .toList();
     } on TimeoutException {
       throw const VehicleException(
-        'El servidor tardó demasiado. Inténtalo de nuevo.',
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
       );
     } on VehicleException {
       rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
     } catch (_) {
       throw const VehicleException(
+        VehicleErrorKind.network,
         'No fue posible consultar tus vehículos. Verifica la conexión con el servidor.',
       );
     }
@@ -76,17 +88,28 @@ class VehicleService {
           .timeout(const Duration(seconds: 12));
       final body = _decode(response.body);
       if (response.statusCode != 201) {
-        throw VehicleException(_messageFor(body, response.statusCode));
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback: 'No fue posible guardar el vehículo. Inténtalo de nuevo.',
+        );
       }
       return Vehicle.fromJson(body);
     } on TimeoutException {
       throw const VehicleException(
-        'El servidor tardó demasiado. Inténtalo de nuevo.',
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
       );
     } on VehicleException {
       rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
     } catch (_) {
       throw const VehicleException(
+        VehicleErrorKind.network,
         'No fue posible guardar el vehículo. Verifica la conexión con el servidor.',
       );
     }
@@ -119,17 +142,29 @@ class VehicleService {
           .timeout(const Duration(seconds: 12));
       final body = _decode(response.body);
       if (response.statusCode != 200) {
-        throw VehicleException(_messageFor(body, response.statusCode));
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback:
+              'No fue posible actualizar el vehículo. Inténtalo de nuevo.',
+        );
       }
       return Vehicle.fromJson(body);
     } on TimeoutException {
       throw const VehicleException(
-        'El servidor tardó demasiado. Inténtalo de nuevo.',
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
       );
     } on VehicleException {
       rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
     } catch (_) {
       throw const VehicleException(
+        VehicleErrorKind.network,
         'No fue posible actualizar el vehículo. Verifica la conexión con el servidor.',
       );
     }
@@ -148,17 +183,28 @@ class VehicleService {
           .timeout(const Duration(seconds: 12));
       final body = _decode(response.body);
       if (response.statusCode != 200) {
-        throw VehicleException(_messageFor(body, response.statusCode));
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback: 'No fue posible consultar el vehículo. Inténtalo de nuevo.',
+        );
       }
       return Vehicle.fromJson(body);
     } on TimeoutException {
       throw const VehicleException(
-        'El servidor tardó demasiado. Inténtalo de nuevo.',
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
       );
     } on VehicleException {
       rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
     } catch (_) {
       throw const VehicleException(
+        VehicleErrorKind.network,
         'No fue posible consultar el vehículo. Verifica la conexión con el servidor.',
       );
     }
@@ -179,17 +225,28 @@ class VehicleService {
           .timeout(const Duration(seconds: 12));
       final body = _decode(response.body);
       if (response.statusCode != 200) {
-        throw VehicleException(_messageFor(body, response.statusCode));
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback: 'No fue posible actualizar el VIN. Inténtalo de nuevo.',
+        );
       }
       return Vehicle.fromJson(body);
     } on TimeoutException {
       throw const VehicleException(
-        'El servidor tardó demasiado. Inténtalo de nuevo.',
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
       );
     } on VehicleException {
       rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
     } catch (_) {
       throw const VehicleException(
+        VehicleErrorKind.network,
         'No fue posible actualizar el VIN. Verifica la conexión con el servidor.',
       );
     }
@@ -209,27 +266,92 @@ class VehicleService {
     }
   }
 
-  String _messageFor(Map<String, dynamic> body, int statusCode) {
+  VehicleException _exceptionFor(
+    Map<String, dynamic> body,
+    int statusCode, {
+    required String fallback,
+  }) {
     final code = body['code']?.toString();
     if (code == 'VEHICLE_ALREADY_EXISTS') {
-      return 'Ya tienes un vehículo registrado con esa placa.';
+      return const VehicleException(
+        VehicleErrorKind.duplicatePlate,
+        'Esta placa ya está registrada. Revisa los datos o usa otra placa.',
+      );
     }
     if (code == 'VALIDATION_ERROR') {
-      return body['message']?.toString() ?? 'Revisa los datos del vehículo.';
+      return _validationException(body['message']?.toString());
     }
     if (code == 'VEHICLE_NOT_FOUND' || statusCode == 404) {
-      return 'No encontramos este vehículo en tu cuenta.';
+      return const VehicleException(
+        VehicleErrorKind.notFound,
+        'No encontramos este vehículo en tu cuenta. Actualiza la lista e inténtalo de nuevo.',
+      );
     }
-    if (statusCode == 401) {
-      return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+    if (code == 'INVALID_ACCESS_TOKEN' || statusCode == 401) {
+      return const VehicleException(
+        VehicleErrorKind.session,
+        'Tu sesión venció. Vuelve a iniciar sesión para continuar.',
+      );
     }
-    return 'No fue posible guardar el vehículo. Inténtalo de nuevo.';
+    if (code == 'ADMIN_ACCESS_REQUIRED' || statusCode == 403) {
+      return const VehicleException(
+        VehicleErrorKind.permission,
+        'No tienes permiso para realizar esta acción.',
+      );
+    }
+    return VehicleException(VehicleErrorKind.server, fallback);
+  }
+
+  VehicleException _validationException(String? backendMessage) {
+    final message = (backendMessage ?? '').toLowerCase();
+    if (message.contains('vin')) {
+      return const VehicleException(
+        VehicleErrorKind.invalidVin,
+        'El VIN debe tener 17 caracteres válidos. Revisa el dato e inténtalo de nuevo.',
+      );
+    }
+    if (message.contains('kilometraje')) {
+      return const VehicleException(
+        VehicleErrorKind.obdOnlyMileage,
+        'El kilometraje se actualizará cuando conectes el adaptador OBD2; no se ingresa manualmente.',
+      );
+    }
+    if (message.contains('placa')) {
+      return const VehicleException(
+        VehicleErrorKind.invalidPlate,
+        'Revisa la placa. Usa letras, números, espacios o guiones.',
+      );
+    }
+    if (message.contains('año')) {
+      return const VehicleException(
+        VehicleErrorKind.invalidVehicleData,
+        'Revisa el año del vehículo e inténtalo de nuevo.',
+      );
+    }
+    return const VehicleException(
+      VehicleErrorKind.invalidVehicleData,
+      'Revisa los datos del vehículo e inténtalo de nuevo.',
+    );
   }
 }
 
-class VehicleException implements Exception {
-  const VehicleException(this.message);
+enum VehicleErrorKind {
+  duplicatePlate,
+  invalidPlate,
+  invalidVin,
+  obdOnlyMileage,
+  invalidVehicleData,
+  notFound,
+  session,
+  permission,
+  network,
+  server,
+}
 
+class VehicleException implements Exception {
+  const VehicleException(this.kind, this.message);
+
+  final VehicleErrorKind kind;
   final String message;
 
   @override
