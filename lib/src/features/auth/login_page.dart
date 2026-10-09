@@ -46,8 +46,8 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final isCompact = size.width < 420;
-    final logoSize = isCompact ? 102.0 : 112.0;
-    final circleSize = logoSize + 22;
+    final logoSize = isCompact ? 132.0 : 150.0;
+    final circleSize = logoSize + 24;
     final fieldWidth = isCompact ? double.infinity : 320.0;
 
     return Scaffold(
