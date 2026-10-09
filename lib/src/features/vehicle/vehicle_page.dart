@@ -269,6 +269,45 @@ class _VehicleDetailPageState extends State<_VehicleDetailPage> {
     if (updated == true) _reload();
   }
 
+  Future<void> _deactivateVehicle(Vehicle vehicle) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Quitar vehículo?'),
+        content: const Text(
+          'Dejará de aparecer en tu lista. Su placa y su historial se conservan para proteger la información registrada.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Quitar vehículo'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await widget.service.deactivate(
+        session: widget.session,
+        vehicleId: vehicle.vehicleId,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } on VehicleException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -317,6 +356,23 @@ class _VehicleDetailPageState extends State<_VehicleDetailPage> {
                   trailing: const Icon(Icons.edit_outlined),
                   onTap: () => _editVin(vehicle),
                 ),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: () => _deactivateVehicle(vehicle),
+                icon: const Icon(Icons.remove_circle_outline),
+                label: const Text('Quitar vehículo de mi lista'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade700,
+                  side: BorderSide(color: Colors.red.shade300),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Esta acción no borra el historial ni libera la placa para otro vehículo.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF687285), height: 1.4),
               ),
               const SizedBox(height: 8),
               const Text(

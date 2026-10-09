@@ -252,6 +252,45 @@ class VehicleService {
     }
   }
 
+  Future<void> deactivate({
+    required AuthSession session,
+    required String vehicleId,
+  }) async {
+    try {
+      final response = await _client
+          .delete(
+            Uri.parse('$apiBaseUrl/api/v1/vehicles/$vehicleId'),
+            headers: _headers(session),
+          )
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode != 204) {
+        throw _exceptionFor(
+          _decode(response.body),
+          response.statusCode,
+          fallback:
+              'No fue posible quitar el vehículo de tu lista. Inténtalo de nuevo.',
+        );
+      }
+    } on TimeoutException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
+      );
+    } on VehicleException {
+      rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
+    } catch (_) {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible quitar el vehículo de tu lista. Verifica la conexión con el servidor.',
+      );
+    }
+  }
+
   Map<String, String> _headers(AuthSession session) => {
     'Content-Type': 'application/json',
     'Authorization': '${session.tokenType} ${session.accessToken}',
@@ -285,6 +324,12 @@ class VehicleService {
       return const VehicleException(
         VehicleErrorKind.notFound,
         'No encontramos este vehículo en tu cuenta. Actualiza la lista e inténtalo de nuevo.',
+      );
+    }
+    if (code == 'OBD_SESSION_ACTIVE') {
+      return const VehicleException(
+        VehicleErrorKind.obdSessionActive,
+        'No puedes quitar este vehículo mientras tenga una lectura OBD2 activa. Desconéctalo e inténtalo de nuevo.',
       );
     }
     if (code == 'INVALID_ACCESS_TOKEN' || statusCode == 401) {
@@ -340,6 +385,7 @@ enum VehicleErrorKind {
   invalidPlate,
   invalidVin,
   obdOnlyMileage,
+  obdSessionActive,
   invalidVehicleData,
   notFound,
   session,

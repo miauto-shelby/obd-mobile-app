@@ -149,6 +149,43 @@ void main() {
       ),
     );
   });
+
+  test('deactivates a vehicle without deleting its history', () async {
+    final service = VehicleService(
+      apiBaseUrl: 'http://api.test',
+      client: MockClient((request) async {
+        expect(request.method, 'DELETE');
+        expect(request.url.path, '/api/v1/vehicles/vehicle-1');
+        expect(request.headers['authorization'], 'Bearer access');
+        return http.Response('', 204);
+      }),
+    );
+
+    await service.deactivate(session: _session, vehicleId: 'vehicle-1');
+  });
+
+  test('explains when a vehicle has an active OBD2 reading', () async {
+    final service = VehicleService(
+      apiBaseUrl: 'http://api.test',
+      client: MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'code': 'OBD_SESSION_ACTIVE'}), 409),
+      ),
+    );
+
+    expectLater(
+      service.deactivate(session: _session, vehicleId: 'vehicle-1'),
+      throwsA(
+        isA<VehicleException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              VehicleErrorKind.obdSessionActive,
+            )
+            .having((error) => error.message, 'message', contains('OBD2')),
+      ),
+    );
+  });
 }
 
 const _session = AuthSession(
