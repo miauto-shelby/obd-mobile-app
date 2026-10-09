@@ -39,6 +39,7 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
   }
 
   Future<void> _restoreSession() async {
+    final startedAt = DateTime.now();
     try {
       final session = await _authService.restoreAndValidateSession();
       if (!mounted) return;
@@ -50,6 +51,11 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
         'No fue posible restaurar la sesión local: ${error.runtimeType}',
       );
     } finally {
+      const minimumSplashDuration = Duration(milliseconds: 650);
+      final elapsed = DateTime.now().difference(startedAt);
+      if (elapsed < minimumSplashDuration) {
+        await Future<void>.delayed(minimumSplashDuration - elapsed);
+      }
       if (mounted) {
         setState(() {
           _isRestoringSession = false;
@@ -95,7 +101,7 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
         useMaterial3: true,
       ),
       home: _isRestoringSession
-          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          ? const _BrandLoadingScreen()
           : AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               child: _session == null
@@ -110,6 +116,69 @@ class _ObdMobileAppState extends State<ObdMobileApp> {
                       apiBaseUrl: widget.configuration.apiBaseUrl,
                     ),
             ),
+    );
+  }
+}
+
+class _BrandLoadingScreen extends StatelessWidget {
+  const _BrandLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LargeBrandLogo(),
+              SizedBox(height: 18),
+              Text(
+                'MY AUTO',
+                style: TextStyle(
+                  color: Color(0xFF767676),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              SizedBox(height: 28),
+              SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  color: Color(0xFFD80000),
+                  strokeWidth: 2.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LargeBrandLogo extends StatelessWidget {
+  const _LargeBrandLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 218,
+      height: 218,
+      padding: const EdgeInsets.all(9),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.fromBorderSide(
+          BorderSide(color: Color(0xFFD80000), width: 6),
+        ),
+      ),
+      child: ClipOval(
+        child: Image.asset('assets/images/brand_logo.png', fit: BoxFit.contain),
+      ),
     );
   }
 }

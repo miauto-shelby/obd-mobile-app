@@ -25,6 +25,10 @@ void main() {
     await tester.pump();
 
     expect(find.text('MY AUTO'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MY AUTO'), findsOneWidget);
     expect(find.text('Continuar con Google'), findsOneWidget);
   });
 
