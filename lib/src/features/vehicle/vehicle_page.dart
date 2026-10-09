@@ -550,6 +550,7 @@ class _VehicleProfileFormState extends State<_VehicleProfileForm> {
   late final TextEditingController _fuelType;
   late final TextEditingController _transmission;
   var _saving = false;
+  String? _activeHelp;
 
   @override
   void initState() {
@@ -629,19 +630,37 @@ class _VehicleProfileFormState extends State<_VehicleProfileForm> {
                     _nickname,
                     'Nombre del vehículo (opcional)',
                     requiredField: false,
+                    help:
+                        'Un nombre corto para reconocerlo, por ejemplo: Auto familiar.',
                   ),
-                  _field(_brand, 'Marca'),
-                  _field(_model, 'Modelo'),
-                  _field(_engine, 'Motor (opcional)', requiredField: false),
+                  _field(
+                    _brand,
+                    'Marca',
+                    help: 'La marca indicada en los documentos del vehículo.',
+                  ),
+                  _field(
+                    _model,
+                    'Modelo',
+                    help: 'El modelo comercial del vehículo.',
+                  ),
+                  _field(
+                    _engine,
+                    'Motor (opcional)',
+                    requiredField: false,
+                    help:
+                        'Puedes indicar el tamaño o referencia del motor si la conoces.',
+                  ),
                   _field(
                     _fuelType,
                     'Combustible (opcional)',
                     requiredField: false,
+                    help: 'Por ejemplo: gasolina, diésel, híbrido o eléctrico.',
                   ),
                   _field(
                     _transmission,
                     'Transmisión (opcional)',
                     requiredField: false,
+                    help: 'Por ejemplo: mecánica, automática o CVT.',
                   ),
                   const SizedBox(height: 6),
                   FilledButton(
@@ -670,21 +689,49 @@ class _VehicleProfileFormState extends State<_VehicleProfileForm> {
     TextEditingController controller,
     String label, {
     bool requiredField = true,
+    required String help,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: controller,
-        validator: (value) {
-          if (requiredField && (value == null || value.trim().isEmpty)) {
-            return 'Este campo es obligatorio.';
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: controller,
+            style: const TextStyle(color: Color(0xFF172033)),
+            onTap: () => setState(() => _activeHelp = label),
+            validator: (value) {
+              if (requiredField && (value == null || value.trim().isEmpty)) {
+                return 'Este campo es obligatorio.';
+              }
+              return null;
+            },
+            decoration: _fieldDecoration(label),
+          ),
+          if (_activeHelp == label) _FieldHelpBubble(message: help),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Color(0xFF5E6A7D)),
+      floatingLabelStyle: const TextStyle(
+        color: Color(0xFF0677F9),
+        fontWeight: FontWeight.w600,
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF9AA5B5)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF0677F9), width: 2),
       ),
     );
   }
@@ -751,6 +798,7 @@ class _VehicleFormState extends State<_VehicleForm> {
   final _fuelType = TextEditingController();
   final _transmission = TextEditingController();
   var _saving = false;
+  String? _activeHelp;
 
   @override
   void dispose() {
@@ -830,36 +878,61 @@ class _VehicleFormState extends State<_VehicleForm> {
                       _nickname,
                       'Nombre del vehículo (opcional)',
                       requiredField: false,
+                      help:
+                          'Un nombre corto para reconocerlo, por ejemplo: Auto familiar.',
                     ),
                     _field(
                       _plate,
                       'Placa',
                       textCapitalization: TextCapitalization.characters,
+                      help:
+                          'Escribe la placa exactamente como aparece en la matrícula.',
                     ),
                     _field(
                       _vin,
                       'VIN (opcional)',
                       requiredField: false,
                       textCapitalization: TextCapitalization.characters,
+                      help:
+                          'Es el número de identificación de 17 caracteres del vehículo.',
                     ),
-                    _field(_brand, 'Marca'),
-                    _field(_model, 'Modelo'),
+                    _field(
+                      _brand,
+                      'Marca',
+                      help: 'La marca indicada en los documentos del vehículo.',
+                    ),
+                    _field(
+                      _model,
+                      'Modelo',
+                      help: 'El modelo comercial del vehículo.',
+                    ),
                     _field(
                       _year,
                       'Año',
                       keyboardType: TextInputType.number,
                       numeric: true,
+                      help:
+                          'Escribe el año del vehículo con cuatro números, por ejemplo 2022.',
                     ),
-                    _field(_engine, 'Motor (opcional)', requiredField: false),
+                    _field(
+                      _engine,
+                      'Motor (opcional)',
+                      requiredField: false,
+                      help:
+                          'Puedes indicar el tamaño o referencia del motor si la conoces.',
+                    ),
                     _field(
                       _fuelType,
                       'Combustible (opcional)',
                       requiredField: false,
+                      help:
+                          'Por ejemplo: gasolina, diésel, híbrido o eléctrico.',
                     ),
                     _field(
                       _transmission,
                       'Transmisión (opcional)',
                       requiredField: false,
+                      help: 'Por ejemplo: mecánica, automática o CVT.',
                     ),
                     const SizedBox(height: 10),
                     FilledButton(
@@ -896,26 +969,56 @@ class _VehicleFormState extends State<_VehicleForm> {
     TextCapitalization textCapitalization = TextCapitalization.words,
     bool requiredField = true,
     bool numeric = false,
+    required String help,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        textCapitalization: textCapitalization,
-        validator: (value) {
-          if (requiredField && (value == null || value.trim().isEmpty)) {
-            return 'Este campo es obligatorio.';
-          }
-          if (numeric && value != null && int.tryParse(value.trim()) == null) {
-            return 'Ingresa un número válido.';
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            textCapitalization: textCapitalization,
+            style: const TextStyle(color: Color(0xFF172033)),
+            onTap: () => setState(() => _activeHelp = label),
+            validator: (value) {
+              if (requiredField && (value == null || value.trim().isEmpty)) {
+                return 'Este campo es obligatorio.';
+              }
+              if (numeric &&
+                  value != null &&
+                  int.tryParse(value.trim()) == null) {
+                return 'Ingresa un número válido.';
+              }
+              return null;
+            },
+            decoration: _fieldDecoration(label),
+          ),
+          if (_activeHelp == label) _FieldHelpBubble(message: help),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Color(0xFF5E6A7D)),
+      floatingLabelStyle: const TextStyle(
+        color: Color(0xFF0677F9),
+        fontWeight: FontWeight.w600,
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF9AA5B5)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF0677F9), width: 2),
       ),
     );
   }
@@ -923,5 +1026,43 @@ class _VehicleFormState extends State<_VehicleForm> {
   String? _optional(TextEditingController controller) {
     final value = controller.text.trim();
     return value.isEmpty ? null : value;
+  }
+}
+
+class _FieldHelpBubble extends StatelessWidget {
+  const _FieldHelpBubble({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF3FF),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: Color(0xFF0677F9),
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF34506F),
+                fontSize: 12.5,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

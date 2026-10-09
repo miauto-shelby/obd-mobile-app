@@ -378,8 +378,8 @@ class _ActionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 184),
-            padding: const EdgeInsets.all(18),
+            constraints: const BoxConstraints(minHeight: 132),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: const Color(0xFFE5EAF1)),
@@ -396,7 +396,7 @@ class _ActionCard extends StatelessWidget {
                   ),
                   child: Icon(icon, color: iconColor, size: 26),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 16),
                 Text(
                   title,
                   style: const TextStyle(
