@@ -247,6 +247,7 @@ class _VehicleDetailPageState extends State<_VehicleDetailPage> {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => _VinForm(
         session: widget.session,
         service: widget.service,
@@ -260,6 +261,7 @@ class _VehicleDetailPageState extends State<_VehicleDetailPage> {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => _VehicleProfileForm(
         session: widget.session,
         service: widget.service,
@@ -478,48 +480,61 @@ class _VinFormState extends State<_VinForm> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
+      top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          24,
-          24,
-          MediaQuery.viewInsetsOf(context).bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Registrar VIN',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
-            const SizedBox(height: 8),
-            const Text('Déjalo vacío si aún no lo tienes.'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _vin,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                labelText: 'VIN',
-                border: OutlineInputBorder(),
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Registrar VIN',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                const Text('Déjalo vacío si aún no lo tienes.'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _vin,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(color: Color(0xFF172033)),
+                  decoration: InputDecoration(
+                    labelText: 'VIN',
+                    labelStyle: const TextStyle(color: Color(0xFF5E6A7D)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Guardar VIN'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text('Guardar VIN'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -604,79 +619,87 @@ class _VehicleProfileFormState extends State<_VehicleProfileForm> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
+      top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          24,
-          24,
-          MediaQuery.viewInsetsOf(context).bottom + 24,
-        ),
+        padding: EdgeInsets.only(bottom: bottomInset),
         child: Material(
-          color: Colors.white,
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Editar vehículo',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 16),
-                  _field(
-                    _nickname,
-                    'Nombre del vehículo (opcional)',
-                    requiredField: false,
-                    help:
-                        'Un nombre corto para reconocerlo, por ejemplo: Auto familiar.',
-                  ),
-                  _field(
-                    _brand,
-                    'Marca',
-                    help: 'La marca indicada en los documentos del vehículo.',
-                  ),
-                  _field(
-                    _model,
-                    'Modelo',
-                    help: 'El modelo comercial del vehículo.',
-                  ),
-                  _field(
-                    _engine,
-                    'Motor (opcional)',
-                    requiredField: false,
-                    help:
-                        'Puedes indicar el tamaño o referencia del motor si la conoces.',
-                  ),
-                  _field(
-                    _fuelType,
-                    'Combustible (opcional)',
-                    requiredField: false,
-                    help: 'Por ejemplo: gasolina, diésel, híbrido o eléctrico.',
-                  ),
-                  _field(
-                    _transmission,
-                    'Transmisión (opcional)',
-                    requiredField: false,
-                    help: 'Por ejemplo: mecánica, automática o CVT.',
-                  ),
-                  const SizedBox(height: 6),
-                  FilledButton(
-                    onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Guardar cambios'),
-                  ),
-                ],
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Editar vehículo',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _field(
+                      _nickname,
+                      'Nombre del vehículo (opcional)',
+                      requiredField: false,
+                      help:
+                          'Un nombre corto para reconocerlo, por ejemplo: Auto familiar.',
+                    ),
+                    _field(
+                      _brand,
+                      'Marca',
+                      help: 'La marca indicada en los documentos del vehículo.',
+                    ),
+                    _field(
+                      _model,
+                      'Modelo',
+                      help: 'El modelo comercial del vehículo.',
+                    ),
+                    _field(
+                      _engine,
+                      'Motor (opcional)',
+                      requiredField: false,
+                      help:
+                          'Puedes indicar el tamaño o referencia del motor si la conoces.',
+                    ),
+                    _field(
+                      _fuelType,
+                      'Combustible (opcional)',
+                      requiredField: false,
+                      help:
+                          'Por ejemplo: gasolina, diésel, híbrido o eléctrico.',
+                    ),
+                    _field(
+                      _transmission,
+                      'Transmisión (opcional)',
+                      requiredField: false,
+                      help: 'Por ejemplo: mecánica, automática o CVT.',
+                    ),
+                    const SizedBox(height: 6),
+                    FilledButton(
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text('Guardar cambios'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
