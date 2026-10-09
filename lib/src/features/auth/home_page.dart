@@ -6,7 +6,7 @@ import '../vehicle/vehicle_page.dart';
 import '../vehicle/vehicle_service.dart';
 import '../obd/obd_connection_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.session,
@@ -20,6 +20,27 @@ class HomePage extends StatelessWidget {
 
   static const _blue = Color(0xFF0677F9);
   static const _ink = Color(0xFF172033);
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late final VehicleService _vehicleService;
+  late Future<Vehicle?> _activeVehicle;
+
+  @override
+  void initState() {
+    super.initState();
+    _vehicleService = VehicleService(apiBaseUrl: widget.apiBaseUrl);
+    _activeVehicle = _vehicleService.getActive(widget.session);
+  }
+
+  void _reloadActiveVehicle() {
+    setState(() {
+      _activeVehicle = _vehicleService.getActive(widget.session);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +69,18 @@ class HomePage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _AppHeader(session: session, onLogout: onLogout),
+                          _AppHeader(
+                            session: widget.session,
+                            onLogout: widget.onLogout,
+                          ),
                           const SizedBox(height: 28),
-                          _VehicleWelcomeCard(
-                            onConnect: () => _openDiagnostics(context),
+                          FutureBuilder<Vehicle?>(
+                            future: _activeVehicle,
+                            builder: (context, snapshot) => _VehicleWelcomeCard(
+                              vehicle: snapshot.data,
+                              onConnect: () => _openDiagnostics(context),
+                              onChangeVehicle: () => _chooseVehicle(context),
+                            ),
                           ),
                           const SizedBox(height: 28),
                           const _SectionTitle(
@@ -71,7 +100,7 @@ class HomePage extends StatelessWidget {
                                         ? constraints.maxWidth
                                         : (constraints.maxWidth - 24) / 3,
                                     icon: Icons.bluetooth_connected_rounded,
-                                    iconColor: _blue,
+                                    iconColor: HomePage._blue,
                                     tint: const Color(0xFFEAF3FF),
                                     title: 'Conectar OBD2',
                                     description:
@@ -116,7 +145,7 @@ class HomePage extends StatelessWidget {
                           const _VehicleStatusCard(),
                           const SizedBox(height: 28),
                           _SessionCard(
-                            session: session,
+                            session: widget.session,
                             onTap: () => _openProfile(context),
                           ),
                           const SizedBox(height: 28),
@@ -142,17 +171,25 @@ class HomePage extends StatelessWidget {
   }
 
   void _openVehicles(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => VehiclePage(session: session, apiBaseUrl: apiBaseUrl),
-      ),
-    );
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => VehiclePage(
+              session: widget.session,
+              apiBaseUrl: widget.apiBaseUrl,
+            ),
+          ),
+        )
+        .then((_) => _reloadActiveVehicle());
   }
 
   void _openMileage(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => _MileagePage(session: session, apiBaseUrl: apiBaseUrl),
+        builder: (_) => _MileagePage(
+          session: widget.session,
+          apiBaseUrl: widget.apiBaseUrl,
+        ),
       ),
     );
   }
@@ -166,9 +203,66 @@ class HomePage extends StatelessWidget {
   void _openProfile(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => _ProfilePage(session: session, onLogout: onLogout),
+        builder: (_) =>
+            _ProfilePage(session: widget.session, onLogout: widget.onLogout),
       ),
     );
+  }
+
+  Future<void> _chooseVehicle(BuildContext context) async {
+    try {
+      final vehicles = await _vehicleService.list(widget.session);
+      if (!context.mounted) return;
+      final selected = await showModalBottomSheet<Vehicle>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) => SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Selecciona tu vehículo',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                ...vehicles.map(
+                  (vehicle) => ListTile(
+                    leading: const Icon(
+                      Icons.directions_car_outlined,
+                      color: HomePage._blue,
+                    ),
+                    title: Text(
+                      vehicle.nickname ?? '${vehicle.brand} ${vehicle.model}',
+                    ),
+                    subtitle: Text('${vehicle.plate} · ${vehicle.year}'),
+                    onTap: () => Navigator.pop(context, vehicle),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (selected == null) return;
+      await _vehicleService.selectActive(
+        session: widget.session,
+        vehicleId: selected.vehicleId,
+      );
+      _reloadActiveVehicle();
+    } on VehicleException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
   }
 }
 
@@ -230,9 +324,15 @@ class _AppHeader extends StatelessWidget {
 }
 
 class _VehicleWelcomeCard extends StatelessWidget {
-  const _VehicleWelcomeCard({required this.onConnect});
+  const _VehicleWelcomeCard({
+    required this.vehicle,
+    required this.onConnect,
+    required this.onChangeVehicle,
+  });
 
+  final Vehicle? vehicle;
   final VoidCallback onConnect;
+  final VoidCallback onChangeVehicle;
 
   @override
   Widget build(BuildContext context) {
@@ -261,8 +361,11 @@ class _VehicleWelcomeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Aún no hay un vehículo conectado',
+                Text(
+                  vehicle == null
+                      ? 'Aún no hay un vehículo seleccionado'
+                      : (vehicle!.nickname ??
+                            '${vehicle!.brand} ${vehicle!.model}'),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -271,13 +374,15 @@ class _VehicleWelcomeCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Conecta tu adaptador OBD2 para ver información y alertas del vehículo.',
+                Text(
+                  vehicle == null
+                      ? 'Agrega o selecciona un vehículo para preparar sus lecturas y alertas.'
+                      : '${vehicle!.plate} · ${vehicle!.year}\n${vehicle!.currentMileage == null ? 'Kilometraje pendiente de lectura OBD2' : 'Kilometraje OBD2: ${vehicle!.currentMileage} km'}',
                   style: TextStyle(color: Color(0xD9FFFFFF), height: 1.35),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
-                  onPressed: onConnect,
+                  onPressed: vehicle == null ? onChangeVehicle : onConnect,
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: HomePage._blue,
@@ -286,9 +391,22 @@ class _VehicleWelcomeCard extends StatelessWidget {
                       vertical: 11,
                     ),
                   ),
-                  icon: const Icon(Icons.bluetooth_rounded, size: 18),
-                  label: const Text('Conectar OBD2'),
+                  icon: Icon(
+                    vehicle == null
+                        ? Icons.directions_car_outlined
+                        : Icons.bluetooth_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    vehicle == null ? 'Elegir vehículo' : 'Conectar OBD2',
+                  ),
                 ),
+                if (vehicle != null)
+                  TextButton(
+                    onPressed: onChangeVehicle,
+                    style: TextButton.styleFrom(foregroundColor: Colors.white),
+                    child: const Text('Cambiar vehículo'),
+                  ),
               ],
             ),
           ),

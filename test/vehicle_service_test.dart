@@ -186,6 +186,34 @@ void main() {
       ),
     );
   });
+
+  test('gets and changes the active vehicle', () async {
+    var requestedSelection = false;
+    final service = VehicleService(
+      apiBaseUrl: 'http://api.test',
+      client: MockClient((request) async {
+        if (request.method == 'GET') {
+          expect(request.url.path, '/api/v1/vehicles/active');
+          return http.Response(jsonEncode(_vehicleJson), 200);
+        }
+        expect(request.method, 'PUT');
+        expect(request.url.path, '/api/v1/vehicles/active');
+        expect(jsonDecode(request.body), {'vehicleId': 'vehicle-1'});
+        requestedSelection = true;
+        return http.Response(jsonEncode(_vehicleJson), 200);
+      }),
+    );
+
+    expect((await service.getActive(_session))?.vehicleId, 'vehicle-1');
+    expect(
+      (await service.selectActive(
+        session: _session,
+        vehicleId: 'vehicle-1',
+      )).vehicleId,
+      'vehicle-1',
+    );
+    expect(requestedSelection, isTrue);
+  });
 }
 
 const _session = AuthSession(

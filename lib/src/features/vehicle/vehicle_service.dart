@@ -210,6 +210,75 @@ class VehicleService {
     }
   }
 
+  Future<Vehicle?> getActive(AuthSession session) async {
+    try {
+      final response = await _client
+          .get(
+            Uri.parse('$apiBaseUrl/api/v1/vehicles/active'),
+            headers: _headers(session),
+          )
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode == 404) return null;
+      final body = _decode(response.body);
+      if (response.statusCode != 200) {
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback: 'No fue posible consultar tu vehículo activo.',
+        );
+      }
+      return Vehicle.fromJson(body);
+    } on TimeoutException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
+      );
+    } on VehicleException {
+      rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
+    }
+  }
+
+  Future<Vehicle> selectActive({
+    required AuthSession session,
+    required String vehicleId,
+  }) async {
+    try {
+      final response = await _client
+          .put(
+            Uri.parse('$apiBaseUrl/api/v1/vehicles/active'),
+            headers: _headers(session),
+            body: jsonEncode({'vehicleId': vehicleId}),
+          )
+          .timeout(const Duration(seconds: 12));
+      final body = _decode(response.body);
+      if (response.statusCode != 200) {
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback: 'No fue posible cambiar el vehículo activo.',
+        );
+      }
+      return Vehicle.fromJson(body);
+    } on TimeoutException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado. Revisa tu conexión e inténtalo de nuevo.',
+      );
+    } on VehicleException {
+      rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible conectarse con el servidor. Revisa tu red e inténtalo de nuevo.',
+      );
+    }
+  }
+
   Future<Vehicle> updateVin({
     required AuthSession session,
     required String vehicleId,
