@@ -67,6 +67,10 @@ Después de completar una sola vez el asistente inicial de Android Studio y las 
 
 No copies archivos `.env`, URI de Atlas, contraseñas ni secretos desde otro equipo. Este modo crea una base de datos local para pruebas.
 
+## Pruebas locales en iPhone
+
+La prueba en iPhone necesita una Mac con Xcode y Docker Desktop. Docker inicia el backend y MongoDB; Xcode firma y ejecuta la app. Consulta la guía paso a paso en [docs/pruebas-ios-mac.md](docs/pruebas-ios-mac.md). No se usa `adb reverse`: el iPhone debe llegar a la IP local de la Mac por Wi-Fi.
+
 ## Variables por ambiente
 
 El Client ID de Google identifica la aplicación, pero no es un secreto. Nunca incluyas `MONGODB_URI`, `MONGODB_PASSWORD` ni `JWT_SECRET` en estos comandos o en el repositorio: pertenecen únicamente al backend.
