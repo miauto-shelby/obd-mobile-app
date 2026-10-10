@@ -386,6 +386,12 @@ class VehicleService {
         'Esta placa ya está registrada. Revisa los datos o usa otra placa.',
       );
     }
+    if (code == 'VIN_ALREADY_REGISTERED') {
+      return const VehicleException(
+        VehicleErrorKind.duplicateVin,
+        'Este VIN ya está asociado a otro vehículo. Revisa el número e inténtalo de nuevo.',
+      );
+    }
     if (code == 'VALIDATION_ERROR') {
       return _validationException(body['message']?.toString());
     }
@@ -451,6 +457,7 @@ class VehicleService {
 
 enum VehicleErrorKind {
   duplicatePlate,
+  duplicateVin,
   invalidPlate,
   invalidVin,
   obdOnlyMileage,
