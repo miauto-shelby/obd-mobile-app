@@ -4,7 +4,7 @@ Frontend Flutter para la app móvil `My Auto`.
 
 ## Backend
 
-Este frontend consume el backend que vive en `OBD2-API`.
+Este frontend consume el backend Node que vive en `OBD2-PLATAFORM`. El repositorio `OBD2-API` mantiene los contratos y la documentación de las rutas.
 
 ## Login
 
