@@ -842,6 +842,8 @@ class _VehicleFormState extends State<_VehicleForm> {
   final _transmission = TextEditingController();
   var _saving = false;
   String? _activeHelp;
+  String? _plateServerError;
+  String? _vinServerError;
 
   @override
   void dispose() {
@@ -858,6 +860,10 @@ class _VehicleFormState extends State<_VehicleForm> {
   }
 
   Future<void> _save() async {
+    setState(() {
+      _plateServerError = null;
+      _vinServerError = null;
+    });
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
@@ -878,9 +884,16 @@ class _VehicleFormState extends State<_VehicleForm> {
       }
     } on VehicleException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        if (error.kind == VehicleErrorKind.duplicatePlate) {
+          setState(() => _plateServerError = error.message);
+        } else if (error.kind == VehicleErrorKind.duplicateVin) {
+          setState(() => _vinServerError = error.message);
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        }
+        _formKey.currentState!.validate();
       }
     } finally {
       if (mounted) {
@@ -934,7 +947,13 @@ class _VehicleFormState extends State<_VehicleForm> {
                           RegExp('[a-zA-Z0-9 -]'),
                         ),
                       ],
-                      validator: _validatePlate,
+                      validator: (value) =>
+                          _plateServerError ?? _validatePlate(value),
+                      onChanged: (_) {
+                        if (_plateServerError != null) {
+                          setState(() => _plateServerError = null);
+                        }
+                      },
                       help:
                           'Escribe la placa exactamente como aparece en la matrícula.',
                     ),
@@ -949,7 +968,13 @@ class _VehicleFormState extends State<_VehicleForm> {
                           RegExp('[a-zA-Z0-9]'),
                         ),
                       ],
-                      validator: _validateOptionalVin,
+                      validator: (value) =>
+                          _vinServerError ?? _validateOptionalVin(value),
+                      onChanged: (_) {
+                        if (_vinServerError != null) {
+                          setState(() => _vinServerError = null);
+                        }
+                      },
                       help:
                           'Es el número de identificación de 17 caracteres del vehículo.',
                     ),
@@ -1029,6 +1054,7 @@ class _VehicleFormState extends State<_VehicleForm> {
     int? maxLength,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
+    ValueChanged<String>? onChanged,
     required String help,
   }) {
     return Padding(
@@ -1044,6 +1070,7 @@ class _VehicleFormState extends State<_VehicleForm> {
             inputFormatters: inputFormatters,
             style: const TextStyle(color: Color(0xFF172033)),
             onTap: () => setState(() => _activeHelp = label),
+            onChanged: onChanged,
             validator: (value) {
               if (requiredField && (value == null || value.trim().isEmpty)) {
                 return 'Este campo es obligatorio.';
