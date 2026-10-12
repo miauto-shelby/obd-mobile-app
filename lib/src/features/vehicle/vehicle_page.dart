@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../auth/auth_models.dart';
 import 'vehicle_models.dart';
@@ -443,6 +444,7 @@ class _VinForm extends StatefulWidget {
 }
 
 class _VinFormState extends State<_VinForm> {
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _vin;
   var _saving = false;
 
@@ -459,6 +461,7 @@ class _VinFormState extends State<_VinForm> {
   }
 
   Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
       await widget.service.updateVin(
@@ -493,51 +496,68 @@ class _VinFormState extends State<_VinForm> {
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Registrar VIN',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                const Text('Déjalo vacío si aún no lo tienes.'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _vin,
-                  textCapitalization: TextCapitalization.characters,
-                  style: const TextStyle(color: Color(0xFF172033)),
-                  decoration: InputDecoration(
-                    labelText: 'VIN',
-                    labelStyle: const TextStyle(color: Color(0xFF5E6A7D)),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Registrar VIN',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('Déjalo vacío si aún no lo tienes.'),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _vin,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]')),
+                      LengthLimitingTextInputFormatter(17),
+                    ],
+                    validator: _validateOptionalVin,
+                    style: const TextStyle(color: Color(0xFF172033)),
+                    decoration: InputDecoration(
+                      labelText: 'VIN',
+                      labelStyle: const TextStyle(color: Color(0xFF5E6A7D)),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text('Guardar VIN'),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Guardar VIN'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  String? _validateOptionalVin(String? value) {
+    final vin = (value ?? '').trim().toUpperCase();
+    if (vin.isEmpty) return null;
+    if (!RegExp(r'^[A-HJ-NPR-Z0-9]{17}$').hasMatch(vin)) {
+      return 'El VIN debe tener 17 caracteres válidos, sin I, O ni Q.';
+    }
+    return null;
   }
 }
 
@@ -908,6 +928,13 @@ class _VehicleFormState extends State<_VehicleForm> {
                       _plate,
                       'Placa',
                       textCapitalization: TextCapitalization.characters,
+                      maxLength: 12,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp('[a-zA-Z0-9 -]'),
+                        ),
+                      ],
+                      validator: _validatePlate,
                       help:
                           'Escribe la placa exactamente como aparece en la matrícula.',
                     ),
@@ -916,6 +943,13 @@ class _VehicleFormState extends State<_VehicleForm> {
                       'VIN (opcional)',
                       requiredField: false,
                       textCapitalization: TextCapitalization.characters,
+                      maxLength: 17,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp('[a-zA-Z0-9]'),
+                        ),
+                      ],
+                      validator: _validateOptionalVin,
                       help:
                           'Es el número de identificación de 17 caracteres del vehículo.',
                     ),
@@ -992,6 +1026,9 @@ class _VehicleFormState extends State<_VehicleForm> {
     TextCapitalization textCapitalization = TextCapitalization.words,
     bool requiredField = true,
     bool numeric = false,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
     required String help,
   }) {
     return Padding(
@@ -1003,6 +1040,8 @@ class _VehicleFormState extends State<_VehicleForm> {
             controller: controller,
             keyboardType: keyboardType,
             textCapitalization: textCapitalization,
+            maxLength: maxLength,
+            inputFormatters: inputFormatters,
             style: const TextStyle(color: Color(0xFF172033)),
             onTap: () => setState(() => _activeHelp = label),
             validator: (value) {
@@ -1014,7 +1053,7 @@ class _VehicleFormState extends State<_VehicleForm> {
                   int.tryParse(value.trim()) == null) {
                 return 'Ingresa un número válido.';
               }
-              return null;
+              return validator?.call(value);
             },
             decoration: _fieldDecoration(label),
           ),
@@ -1022,6 +1061,24 @@ class _VehicleFormState extends State<_VehicleForm> {
         ],
       ),
     );
+  }
+
+  String? _validatePlate(String? value) {
+    final plate = (value ?? '').trim();
+    if (plate.isEmpty) return null;
+    if (!RegExp(r'^[A-Za-z0-9 -]{1,12}$').hasMatch(plate)) {
+      return 'La placa solo admite letras, números, espacios o guiones.';
+    }
+    return null;
+  }
+
+  String? _validateOptionalVin(String? value) {
+    final vin = (value ?? '').trim().toUpperCase();
+    if (vin.isEmpty) return null;
+    if (!RegExp(r'^[A-HJ-NPR-Z0-9]{17}$').hasMatch(vin)) {
+      return 'El VIN debe tener 17 caracteres válidos, sin I, O ni Q.';
+    }
+    return null;
   }
 
   InputDecoration _fieldDecoration(String label) {
