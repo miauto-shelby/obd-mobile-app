@@ -92,38 +92,73 @@ void main() {
     );
   });
 
-  test('explains that a VIN is already associated with another vehicle', () async {
-    final service = VehicleService(
-      apiBaseUrl: 'http://api.test',
-      client: MockClient(
-        (_) async => http.Response(
-          jsonEncode({'code': 'VIN_ALREADY_REGISTERED'}),
-          409,
+  test(
+    'explains that a VIN is already associated with another vehicle',
+    () async {
+      final service = VehicleService(
+        apiBaseUrl: 'http://api.test',
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({'code': 'VIN_ALREADY_REGISTERED'}),
+            409,
+          ),
         ),
-      ),
-    );
+      );
 
-    expectLater(
-      service.updateVin(
-        session: _session,
-        vehicleId: 'vehicle-1',
-        vin: '1HGCM82633A004352',
-      ),
-      throwsA(
-        isA<VehicleException>()
-            .having(
-              (error) => error.kind,
-              'kind',
-              VehicleErrorKind.duplicateVin,
-            )
-            .having(
-              (error) => error.message,
-              'message',
-              contains('ya está asociado'),
-            ),
-      ),
-    );
-  });
+      expectLater(
+        service.updateVin(
+          session: _session,
+          vehicleId: 'vehicle-1',
+          vin: '1HGCM82633A004352',
+        ),
+        throwsA(
+          isA<VehicleException>()
+              .having(
+                (error) => error.kind,
+                'kind',
+                VehicleErrorKind.duplicateVin,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('ya está asociado'),
+              ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'explains that a registered VIN requires an administrator to change',
+    () async {
+      final service = VehicleService(
+        apiBaseUrl: 'http://api.test',
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({'code': 'VIN_CHANGE_REQUIRES_ADMIN'}),
+            409,
+          ),
+        ),
+      );
+
+      expectLater(
+        service.updateVin(
+          session: _session,
+          vehicleId: 'vehicle-1',
+          vin: '1M8GDM9AXKP042788',
+        ),
+        throwsA(
+          isA<VehicleException>()
+              .having((error) => error.kind, 'kind', VehicleErrorKind.vinLocked)
+              .having(
+                (error) => error.message,
+                'message',
+                contains('administrador'),
+              ),
+        ),
+      );
+    },
+  );
 
   test('explains that manual mileage is not accepted', () async {
     final service = VehicleService(

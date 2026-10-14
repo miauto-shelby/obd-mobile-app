@@ -355,9 +355,18 @@ class _VehicleDetailPageState extends State<_VehicleDetailPage> {
                 child: ListTile(
                   leading: const Icon(Icons.confirmation_number_outlined),
                   title: const Text('VIN'),
-                  subtitle: Text(vehicle.vin ?? 'Pendiente de registrar'),
-                  trailing: const Icon(Icons.edit_outlined),
-                  onTap: () => _editVin(vehicle),
+                  subtitle: Text(
+                    vehicle.vin == null
+                        ? 'Pendiente de registrar'
+                        : '${vehicle.vin}\nRegistrado. Las correcciones requieren un administrador.',
+                  ),
+                  isThreeLine: vehicle.vin != null,
+                  trailing: Icon(
+                    vehicle.vin == null
+                        ? Icons.edit_outlined
+                        : Icons.lock_outline,
+                  ),
+                  onTap: vehicle.vin == null ? () => _editVin(vehicle) : null,
                 ),
               ),
               const SizedBox(height: 24),
@@ -379,7 +388,7 @@ class _VehicleDetailPageState extends State<_VehicleDetailPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Por ahora puedes completar el VIN. Las lecturas OBD2 se agregarán cuando el adaptador esté definido.',
+                'Puedes registrar el VIN una sola vez. Si requiere corrección, debe realizarla un administrador con motivo y registro de auditoría.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF687285), height: 1.4),
               ),
@@ -447,6 +456,7 @@ class _VinFormState extends State<_VinForm> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _vin;
   var _saving = false;
+  String? _vinServerError;
 
   @override
   void initState() {
@@ -461,20 +471,27 @@ class _VinFormState extends State<_VinForm> {
   }
 
   Future<void> _save() async {
+    setState(() => _vinServerError = null);
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
       await widget.service.updateVin(
         session: widget.session,
         vehicleId: widget.vehicle.vehicleId,
-        vin: _vin.text.trim().isEmpty ? null : _vin.text.trim(),
+        vin: _vin.text.trim(),
       );
       if (mounted) Navigator.pop(context, true);
     } on VehicleException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        if (error.kind == VehicleErrorKind.duplicateVin ||
+            error.kind == VehicleErrorKind.vinLocked) {
+          setState(() => _vinServerError = error.message);
+          _formKey.currentState!.validate();
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        }
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -507,7 +524,9 @@ class _VinFormState extends State<_VinForm> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
-                  const Text('Déjalo vacío si aún no lo tienes.'),
+                  const Text(
+                    'Regístralo con cuidado: después solo un administrador podrá corregirlo.',
+                  ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _vin,
@@ -516,11 +535,19 @@ class _VinFormState extends State<_VinForm> {
                       FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]')),
                       LengthLimitingTextInputFormatter(17),
                     ],
-                    validator: _validateOptionalVin,
+                    validator: (value) =>
+                        _vinServerError ?? _validateRequiredVin(value),
+                    onChanged: (_) {
+                      if (_vinServerError != null) {
+                        setState(() => _vinServerError = null);
+                      }
+                    },
                     style: const TextStyle(color: Color(0xFF172033)),
                     decoration: InputDecoration(
                       labelText: 'VIN',
                       labelStyle: const TextStyle(color: Color(0xFF5E6A7D)),
+                      errorMaxLines: 3,
+                      errorStyle: const TextStyle(height: 1.25),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -551,9 +578,9 @@ class _VinFormState extends State<_VinForm> {
     );
   }
 
-  String? _validateOptionalVin(String? value) {
+  String? _validateRequiredVin(String? value) {
     final vin = (value ?? '').trim().toUpperCase();
-    if (vin.isEmpty) return null;
+    if (vin.isEmpty) return 'El VIN es obligatorio para registrarlo.';
     if (!RegExp(r'^[A-HJ-NPR-Z0-9]{17}$').hasMatch(vin)) {
       return 'El VIN debe tener 17 caracteres válidos, sin I, O ni Q.';
     }

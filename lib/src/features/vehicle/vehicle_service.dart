@@ -392,6 +392,12 @@ class VehicleService {
         'Este VIN ya está asociado a otro vehículo. Revisa el número e inténtalo de nuevo.',
       );
     }
+    if (code == 'VIN_CHANGE_REQUIRES_ADMIN') {
+      return const VehicleException(
+        VehicleErrorKind.vinLocked,
+        'El VIN ya fue registrado. Solo un administrador puede corregirlo.',
+      );
+    }
     if (code == 'VALIDATION_ERROR') {
       return _validationException(body['message']?.toString());
     }
@@ -458,6 +464,7 @@ class VehicleService {
 enum VehicleErrorKind {
   duplicatePlate,
   duplicateVin,
+  vinLocked,
   invalidPlate,
   invalidVin,
   obdOnlyMileage,
