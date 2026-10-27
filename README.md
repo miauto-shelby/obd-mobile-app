@@ -67,9 +67,19 @@ Después de completar una sola vez el asistente inicial de Android Studio y las 
 
 No copies archivos `.env`, URI de Atlas, contraseñas ni secretos desde otro equipo. Este modo crea una base de datos local para pruebas.
 
-## Pruebas locales en iPhone
+## Validación en iPhone desde un Mac
 
-La prueba en iPhone necesita una Mac con Xcode y Docker Desktop. Docker inicia el backend y MongoDB; Xcode firma y ejecuta la app. Consulta la guía paso a paso en [docs/pruebas-ios-mac.md](docs/pruebas-ios-mac.md). No se usa `adb reverse`: el iPhone debe llegar a la IP local de la Mac por Wi-Fi.
+La prueba en iPhone necesita una Mac con Xcode y Docker Desktop. Consulta el paso a paso en [docs/pruebas-ios-mac.md](docs/pruebas-ios-mac.md). Docker inicia el backend y la base de datos local; Xcode firma y ejecuta la app. El iPhone debe estar en la misma red Wi-Fi del Mac; no existe una equivalencia de `adb reverse` para iPhone.
+
+La app permite HTTP únicamente en la compilación Debug para poder llegar al backend Docker local. La compilación Release mantiene la configuración segura normal.
+
+La persona que valida necesita completar una vez Xcode, su cuenta Apple, la confianza del iPhone y Developer Mode. Después debe ejecutar desde el repositorio `obd-platform`:
+
+```bash
+bash scripts/iniciar-pruebas-ios-local.sh /ruta/a/obd-mobile-app
+```
+
+El cliente OAuth iOS de desarrollo está configurado en `Info-Debug.plist` para el identificador `com.miautoshelby.myauto.dev`; sus IDs públicos no son secretos. El acceso se limita a los usuarios de prueba configurados en Google Cloud. La app Release no usa este archivo ni permite HTTP local.
 
 ## Variables por ambiente
 
