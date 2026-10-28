@@ -66,7 +66,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Hola, Sebastián Fajardo'), findsOneWidget);
+    expect(find.text('Hola, Sebastián'), findsOneWidget);
+    expect(find.text('Fajardo'), findsOneWidget);
     expect(find.text('Conectar OBD2'), findsOneWidget);
     expect(find.text('Estado del vehículo'), findsOneWidget);
     expect(find.text('Sesión protegida'), findsOneWidget);

@@ -7,6 +7,27 @@ import 'package:obd_mobile_app/src/features/auth/auth_models.dart';
 import 'package:obd_mobile_app/src/features/vehicle/vehicle_service.dart';
 
 void main() {
+  test('loads the available brands from the backend catalog', () async {
+    final service = VehicleService(
+      apiBaseUrl: 'http://api.test',
+      client: MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/vehicle-brands');
+        return http.Response(
+          jsonEncode({
+            'items': [
+              {'brandId': 'CHEVROLET', 'name': 'CHEVROLET'},
+              {'brandId': 'MAZDA', 'name': 'MAZDA'},
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+
+    expect(await service.listBrands(_session), ['CHEVROLET', 'MAZDA']);
+  });
+
   test('creates a vehicle without sending manual mileage', () async {
     late Map<String, dynamic> requestBody;
     final service = VehicleService(

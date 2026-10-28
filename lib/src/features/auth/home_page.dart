@@ -274,8 +274,9 @@ class _AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = session.user.fullName.trim();
-    final displayName = name.isEmpty ? 'Usuario' : name;
+    final firstName = session.user.firstName.trim();
+    final lastName = session.user.lastName.trim();
+    final displayName = firstName.isEmpty ? 'Usuario' : firstName;
 
     return Row(
       children: [
@@ -291,14 +292,16 @@ class _AppHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: HomePage._ink,
-                  fontSize: 22,
+                  fontSize: 19,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 3),
-              const Text(
-                'Tu espacio My Auto está listo.',
-                style: TextStyle(color: Color(0xFF687285), fontSize: 14),
+              const SizedBox(height: 2),
+              Text(
+                lastName.isEmpty ? 'Tu espacio My Auto está listo.' : lastName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFF687285), fontSize: 14),
               ),
             ],
           ),
@@ -999,12 +1002,24 @@ class _ProfileIdentity extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user.fullName.isEmpty ? 'Usuario My Auto' : user.fullName,
+                    user.firstName.trim().isEmpty
+                        ? 'Usuario My Auto'
+                        : user.firstName.trim(),
                     style: const TextStyle(
-                      fontSize: 19,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  if (user.lastName.trim().isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      user.lastName.trim(),
+                      style: const TextStyle(
+                        color: Color(0xFF687285),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     user.email.isEmpty ? 'Cuenta Google' : user.email,
