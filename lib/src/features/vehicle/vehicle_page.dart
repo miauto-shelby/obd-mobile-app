@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../auth/auth_models.dart';
+import 'brand_dropdown_field.dart';
 import 'vehicle_models.dart';
 import 'vehicle_service.dart';
 
@@ -701,10 +702,10 @@ class _VehicleProfileFormState extends State<_VehicleProfileForm> {
                       help:
                           'Un nombre corto para reconocerlo, por ejemplo: Auto familiar.',
                     ),
-                    _field(
-                      _brand,
-                      'Marca',
-                      help: 'La marca indicada en los documentos del vehículo.',
+                    BrandDropdownField(
+                      session: widget.session,
+                      service: widget.service,
+                      controller: _brand,
                     ),
                     _field(
                       _model,
@@ -768,6 +769,8 @@ class _VehicleProfileFormState extends State<_VehicleProfileForm> {
         children: [
           TextFormField(
             controller: controller,
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: const [_UpperCaseTextFormatter()],
             style: const TextStyle(color: Color(0xFF172033)),
             onTap: () => setState(() => _activeHelp = label),
             validator: (value) {
@@ -1007,10 +1010,10 @@ class _VehicleFormState extends State<_VehicleForm> {
                       help:
                           'Es el número de identificación de 17 caracteres del vehículo.',
                     ),
-                    _field(
-                      _brand,
-                      'Marca',
-                      help: 'La marca indicada en los documentos del vehículo.',
+                    BrandDropdownField(
+                      session: widget.session,
+                      service: widget.service,
+                      controller: _brand,
                     ),
                     _field(
                       _model,
@@ -1077,7 +1080,7 @@ class _VehicleFormState extends State<_VehicleForm> {
     TextEditingController controller,
     String label, {
     TextInputType? keyboardType,
-    TextCapitalization textCapitalization = TextCapitalization.words,
+    TextCapitalization textCapitalization = TextCapitalization.characters,
     bool requiredField = true,
     bool numeric = false,
     int? maxLength,
@@ -1096,7 +1099,8 @@ class _VehicleFormState extends State<_VehicleForm> {
             keyboardType: keyboardType,
             textCapitalization: textCapitalization,
             maxLength: maxLength,
-            inputFormatters: inputFormatters,
+            inputFormatters:
+                inputFormatters ?? const [_UpperCaseTextFormatter()],
             style: const TextStyle(color: Color(0xFF172033)),
             onTap: () => setState(() => _activeHelp = label),
             onChanged: onChanged,
@@ -1164,6 +1168,18 @@ class _VehicleFormState extends State<_VehicleForm> {
   String? _optional(TextEditingController controller) {
     final value = controller.text.trim();
     return value.isEmpty ? null : value;
+  }
+}
+
+class _UpperCaseTextFormatter extends TextInputFormatter {
+  const _UpperCaseTextFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
 

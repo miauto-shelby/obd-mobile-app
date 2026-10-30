@@ -13,6 +13,44 @@ class VehicleService {
   final String apiBaseUrl;
   final http.Client _client;
 
+  Future<List<String>> listBrands(AuthSession session) async {
+    try {
+      final response = await _client
+          .get(
+            Uri.parse('$apiBaseUrl/api/v1/vehicle-brands'),
+            headers: _headers(session),
+          )
+          .timeout(const Duration(seconds: 12));
+      final body = _decode(response.body);
+      if (response.statusCode != 200) {
+        throw _exceptionFor(
+          body,
+          response.statusCode,
+          fallback: 'No fue posible cargar las marcas disponibles.',
+        );
+      }
+      final items = body['items'];
+      if (items is! List) return const [];
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map((item) => item['name']?.toString() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
+    } on TimeoutException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'El servidor tardó demasiado al cargar las marcas. Inténtalo de nuevo.',
+      );
+    } on VehicleException {
+      rethrow;
+    } on http.ClientException {
+      throw const VehicleException(
+        VehicleErrorKind.network,
+        'No fue posible cargar las marcas. Revisa tu red e inténtalo de nuevo.',
+      );
+    }
+  }
+
   Future<List<Vehicle>> list(AuthSession session) async {
     try {
       final response = await _client
@@ -396,6 +434,12 @@ class VehicleService {
       return const VehicleException(
         VehicleErrorKind.vinLocked,
         'El VIN ya fue registrado. Solo un administrador puede corregirlo.',
+      );
+    }
+    if (code == 'BRAND_NOT_AVAILABLE') {
+      return const VehicleException(
+        VehicleErrorKind.invalidVehicleData,
+        'Selecciona una marca disponible en la lista.',
       );
     }
     if (code == 'VALIDATION_ERROR') {

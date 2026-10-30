@@ -148,15 +148,6 @@ class _HomePageState extends State<HomePage> {
                             session: widget.session,
                             onTap: () => _openProfile(context),
                           ),
-                          const SizedBox(height: 28),
-                          _BottomNavigation(
-                            onHome: () => Navigator.of(
-                              context,
-                            ).popUntil((route) => route.isFirst),
-                            onVehicle: () => _openVehicles(context),
-                            onMileage: () => _openMileage(context),
-                            onProfile: () => _openProfile(context),
-                          ),
                         ],
                       ),
                     ),
@@ -183,17 +174,6 @@ class _HomePageState extends State<HomePage> {
         .then((_) => _reloadActiveVehicle());
   }
 
-  void _openMileage(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _MileagePage(
-          session: widget.session,
-          apiBaseUrl: widget.apiBaseUrl,
-        ),
-      ),
-    );
-  }
-
   void _openDiagnostics(BuildContext context) {
     Navigator.of(
       context,
@@ -213,6 +193,10 @@ class _HomePageState extends State<HomePage> {
     try {
       final vehicles = await _vehicleService.list(widget.session);
       if (!context.mounted) return;
+      if (vehicles.isEmpty) {
+        _showNoVehiclesMessage(context);
+        return;
+      }
       final selected = await showModalBottomSheet<Vehicle>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -264,6 +248,66 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
+
+  void _showNoVehiclesMessage(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        Future<void>.delayed(const Duration(seconds: 7), () {
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+          }
+        });
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24, 26, 24, 14),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF3FF),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.directions_car_outlined,
+                  color: HomePage._blue,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Aún no tienes vehículos',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: HomePage._ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Agrega tu primer vehículo desde “Mi vehículo” para poder seleccionarlo.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF687285), height: 1.35),
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _AppHeader extends StatelessWidget {
@@ -274,8 +318,11 @@ class _AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = session.user.fullName.trim();
-    final displayName = name.isEmpty ? 'Usuario' : name;
+    final fullName = session.user.fullName.trim();
+    final displayName = fullName.isEmpty
+        ? 'USUARIO MY AUTO'
+        : fullName.toUpperCase();
+    final email = session.user.email.trim();
 
     return Row(
       children: [
@@ -286,19 +333,32 @@ class _AppHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hola, $displayName',
+                'Hola,',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: HomePage._ink,
-                  fontSize: 22,
+                  fontSize: 19,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 3),
-              const Text(
-                'Tu espacio My Auto está listo.',
-                style: TextStyle(color: Color(0xFF687285), fontSize: 14),
+              const SizedBox(height: 2),
+              Text(
+                displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF536076),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                email.isEmpty ? 'Cuenta de My Auto' : email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFF7C8493), fontSize: 12),
               ),
             ],
           ),
@@ -701,106 +761,6 @@ class _SessionCard extends StatelessWidget {
   }
 }
 
-class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation({
-    required this.onHome,
-    required this.onVehicle,
-    required this.onMileage,
-    required this.onProfile,
-  });
-
-  final VoidCallback onHome;
-  final VoidCallback onVehicle;
-  final VoidCallback onMileage;
-  final VoidCallback onProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFD9E2EE)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.home_outlined,
-              label: 'Inicio',
-              active: true,
-              onTap: onHome,
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.directions_car_outlined,
-              label: 'Vehículo',
-              onTap: onVehicle,
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.speed_outlined,
-              label: 'Kilometraje',
-              onTap: onMileage,
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.person_outline,
-              label: 'Perfil',
-              onTap: onProfile,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavigationItem extends StatelessWidget {
-  const _NavigationItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.active = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? HomePage._blue : const Color(0xFF6E7787);
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _MileagePage extends StatefulWidget {
   const _MileagePage({required this.session, required this.apiBaseUrl});
 
@@ -959,6 +919,26 @@ class _ProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           OutlinedButton.icon(
+            style: ButtonStyle(
+              foregroundColor: const WidgetStatePropertyAll(HomePage._blue),
+              side: const WidgetStatePropertyAll(BorderSide.none),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.pressed)
+                    ? const Color(0xFFCFE6FF)
+                    : states.contains(WidgetState.hovered)
+                    ? const Color(0xFFDFEEFF)
+                    : const Color(0xFFF0F7FF),
+              ),
+              overlayColor: const WidgetStatePropertyAll(Color(0x1A0677F9)),
+              shape: const WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(18)),
+                ),
+              ),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+              ),
+            ),
             onPressed: () async {
               try {
                 await onLogout();
@@ -999,12 +979,24 @@ class _ProfileIdentity extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user.fullName.isEmpty ? 'Usuario My Auto' : user.fullName,
+                    user.firstName.trim().isEmpty
+                        ? 'Usuario My Auto'
+                        : user.firstName.trim(),
                     style: const TextStyle(
-                      fontSize: 19,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  if (user.lastName.trim().isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      user.lastName.trim(),
+                      style: const TextStyle(
+                        color: Color(0xFF687285),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     user.email.isEmpty ? 'Cuenta Google' : user.email,
