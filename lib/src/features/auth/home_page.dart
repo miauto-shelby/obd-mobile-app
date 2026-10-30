@@ -193,6 +193,10 @@ class _HomePageState extends State<HomePage> {
     try {
       final vehicles = await _vehicleService.list(widget.session);
       if (!context.mounted) return;
+      if (vehicles.isEmpty) {
+        _showNoVehiclesMessage(context);
+        return;
+      }
       final selected = await showModalBottomSheet<Vehicle>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -243,6 +247,66 @@ class _HomePageState extends State<HomePage> {
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
+  }
+
+  void _showNoVehiclesMessage(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        Future<void>.delayed(const Duration(seconds: 7), () {
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+          }
+        });
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24, 26, 24, 14),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF3FF),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.directions_car_outlined,
+                  color: HomePage._blue,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Aún no tienes vehículos',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: HomePage._ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Agrega tu primer vehículo desde “Mi vehículo” para poder seleccionarlo.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF687285), height: 1.35),
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
