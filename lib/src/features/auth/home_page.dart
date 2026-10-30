@@ -148,15 +148,6 @@ class _HomePageState extends State<HomePage> {
                             session: widget.session,
                             onTap: () => _openProfile(context),
                           ),
-                          const SizedBox(height: 28),
-                          _BottomNavigation(
-                            onHome: () => Navigator.of(
-                              context,
-                            ).popUntil((route) => route.isFirst),
-                            onVehicle: () => _openVehicles(context),
-                            onMileage: () => _openMileage(context),
-                            onProfile: () => _openProfile(context),
-                          ),
                         ],
                       ),
                     ),
@@ -181,17 +172,6 @@ class _HomePageState extends State<HomePage> {
           ),
         )
         .then((_) => _reloadActiveVehicle());
-  }
-
-  void _openMileage(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _MileagePage(
-          session: widget.session,
-          apiBaseUrl: widget.apiBaseUrl,
-        ),
-      ),
-    );
   }
 
   void _openDiagnostics(BuildContext context) {
@@ -274,9 +254,11 @@ class _AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstName = session.user.firstName.trim();
-    final lastName = session.user.lastName.trim();
-    final displayName = firstName.isEmpty ? 'Usuario' : firstName;
+    final fullName = session.user.fullName.trim();
+    final displayName = fullName.isEmpty
+        ? 'USUARIO MY AUTO'
+        : fullName.toUpperCase();
+    final email = session.user.email.trim();
 
     return Row(
       children: [
@@ -287,7 +269,7 @@ class _AppHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hola, $displayName',
+                'Hola,',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -298,10 +280,21 @@ class _AppHeader extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                lastName.isEmpty ? 'Tu espacio My Auto está listo.' : lastName,
+                displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF687285), fontSize: 14),
+                style: const TextStyle(
+                  color: Color(0xFF536076),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                email.isEmpty ? 'Cuenta de My Auto' : email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFF7C8493), fontSize: 12),
               ),
             ],
           ),
@@ -704,106 +697,6 @@ class _SessionCard extends StatelessWidget {
   }
 }
 
-class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation({
-    required this.onHome,
-    required this.onVehicle,
-    required this.onMileage,
-    required this.onProfile,
-  });
-
-  final VoidCallback onHome;
-  final VoidCallback onVehicle;
-  final VoidCallback onMileage;
-  final VoidCallback onProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFD9E2EE)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.home_outlined,
-              label: 'Inicio',
-              active: true,
-              onTap: onHome,
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.directions_car_outlined,
-              label: 'Vehículo',
-              onTap: onVehicle,
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.speed_outlined,
-              label: 'Kilometraje',
-              onTap: onMileage,
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.person_outline,
-              label: 'Perfil',
-              onTap: onProfile,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavigationItem extends StatelessWidget {
-  const _NavigationItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.active = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? HomePage._blue : const Color(0xFF6E7787);
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _MileagePage extends StatefulWidget {
   const _MileagePage({required this.session, required this.apiBaseUrl});
 
@@ -962,6 +855,26 @@ class _ProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           OutlinedButton.icon(
+            style: ButtonStyle(
+              foregroundColor: const WidgetStatePropertyAll(HomePage._blue),
+              side: const WidgetStatePropertyAll(BorderSide.none),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.pressed)
+                    ? const Color(0xFFCFE6FF)
+                    : states.contains(WidgetState.hovered)
+                    ? const Color(0xFFDFEEFF)
+                    : const Color(0xFFF0F7FF),
+              ),
+              overlayColor: const WidgetStatePropertyAll(Color(0x1A0677F9)),
+              shape: const WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(18)),
+                ),
+              ),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+              ),
+            ),
             onPressed: () async {
               try {
                 await onLogout();
