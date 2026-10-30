@@ -51,13 +51,21 @@ class _BrandDropdownFieldState extends State<BrandDropdownField> {
           child: DropdownButtonFormField<String>(
             initialValue: selected,
             isExpanded: true,
+            iconEnabledColor: const Color(0xFF536076),
             style: const TextStyle(
               color: Color(0xFF172033),
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
             decoration: _decoration('Marca'),
-            hint: const Text('Selecciona una marca'),
+            hint: const Text(
+              'Selecciona una marca',
+              style: TextStyle(
+                color: Color(0xFF687285),
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
             items: brands
                 .map(
                   (brand) => DropdownMenuItem(value: brand, child: Text(brand)),
