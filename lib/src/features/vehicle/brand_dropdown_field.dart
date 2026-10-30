@@ -52,6 +52,8 @@ class _BrandDropdownFieldState extends State<BrandDropdownField> {
             initialValue: selected,
             isExpanded: true,
             iconEnabledColor: const Color(0xFF536076),
+            dropdownColor: Colors.white,
+            borderRadius: BorderRadius.circular(16),
             style: const TextStyle(
               color: Color(0xFF172033),
               fontSize: 16,
@@ -68,7 +70,17 @@ class _BrandDropdownFieldState extends State<BrandDropdownField> {
             ),
             items: brands
                 .map(
-                  (brand) => DropdownMenuItem(value: brand, child: Text(brand)),
+                  (brand) => DropdownMenuItem(
+                    value: brand,
+                    child: Text(
+                      brand,
+                      style: const TextStyle(
+                        color: Color(0xFF172033),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 )
                 .toList(),
             onChanged: (value) =>
