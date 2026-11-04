@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../auth/auth_models.dart';
 import 'brand_dropdown_field.dart';
@@ -872,7 +876,10 @@ class _VehicleFormState extends State<_VehicleForm> {
   final _engine = TextEditingController();
   final _fuelType = TextEditingController();
   final _transmission = TextEditingController();
+  final _imagePicker = ImagePicker();
   var _saving = false;
+  var _capturingPropertyCard = false;
+  Uint8List? _propertyCardImage;
   String? _activeHelp;
   String? _plateServerError;
   String? _vinServerError;
@@ -934,6 +941,82 @@ class _VehicleFormState extends State<_VehicleForm> {
     }
   }
 
+  Future<void> _capturePropertyCard() async {
+    setState(() => _capturingPropertyCard = true);
+    try {
+      var permission = await Permission.camera.status;
+      if (!permission.isGranted) {
+        permission = await Permission.camera.request();
+      }
+
+      if (!permission.isGranted) {
+        if (mounted) _showCameraPermissionMessage(permission);
+        return;
+      }
+
+      final photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 2048,
+      );
+      if (photo == null) return;
+
+      final bytes = await photo.readAsBytes();
+      try {
+        await File(photo.path).delete();
+      } catch (_) {
+        // The picker cache is managed by the operating system if it cannot be
+        // removed immediately. The app never persists or uploads the image.
+      }
+
+      if (mounted) {
+        setState(() => _propertyCardImage = bytes);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No fue posible abrir la cámara. Puedes diligenciar el formulario manualmente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _capturingPropertyCard = false);
+    }
+  }
+
+  void _showCameraPermissionMessage(PermissionStatus permission) {
+    final permanentlyDenied =
+        permission.isPermanentlyDenied || permission.isRestricted;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Permiso de cámara'),
+        content: Text(
+          permanentlyDenied
+              ? 'My Auto necesita acceso a la cámara para leer la tarjeta de propiedad. Habilítalo en la configuración de la aplicación.'
+              : 'Sin permiso de cámara puedes continuar diligenciando los datos manualmente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Ahora no'),
+          ),
+          if (permanentlyDenied)
+            FilledButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await openAppSettings();
+              },
+              child: const Text('Abrir configuración'),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -960,6 +1043,15 @@ class _VehicleFormState extends State<_VehicleForm> {
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF172033),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    _PropertyCardCaptureCard(
+                      imageBytes: _propertyCardImage,
+                      isCapturing: _capturingPropertyCard,
+                      onCapture: _capturePropertyCard,
+                      onDiscard: _propertyCardImage == null
+                          ? null
+                          : () => setState(() => _propertyCardImage = null),
                     ),
                     const SizedBox(height: 20),
                     _field(
@@ -1168,6 +1260,102 @@ class _VehicleFormState extends State<_VehicleForm> {
   String? _optional(TextEditingController controller) {
     final value = controller.text.trim();
     return value.isEmpty ? null : value;
+  }
+}
+
+class _PropertyCardCaptureCard extends StatelessWidget {
+  const _PropertyCardCaptureCard({
+    required this.imageBytes,
+    required this.isCapturing,
+    required this.onCapture,
+    required this.onDiscard,
+  });
+
+  final Uint8List? imageBytes;
+  final bool isCapturing;
+  final VoidCallback onCapture;
+  final VoidCallback? onDiscard;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F7FF),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.document_scanner_outlined, color: Color(0xFF0677F9)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Leer tarjeta de propiedad',
+                  style: TextStyle(
+                    color: Color(0xFF172033),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Toma una foto clara. La imagen se mantiene solo en este formulario y no se envía al servidor.',
+            style: TextStyle(color: Color(0xFF5E6A7D), height: 1.3),
+          ),
+          if (imageBytes != null) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.memory(
+                imageBytes!,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Foto lista. La lectura automática se agregará en el siguiente paso; por ahora revisa o completa los campos manualmente.',
+              style: TextStyle(
+                color: Color(0xFF536076),
+                fontSize: 13,
+                height: 1.3,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: isCapturing ? null : onCapture,
+                icon: isCapturing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.camera_alt_outlined),
+                label: Text(
+                  imageBytes == null ? 'Usar cámara' : 'Tomar otra foto',
+                ),
+              ),
+              if (onDiscard != null) ...[
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: onDiscard,
+                  child: const Text('Descartar'),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
