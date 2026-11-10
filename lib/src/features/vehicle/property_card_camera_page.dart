@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -172,30 +174,27 @@ class _PropertyCardCameraPageState extends State<PropertyCardCameraPage>
                       ),
                     ),
                   Positioned(
-                    bottom: 18,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: SizedBox(
-                        width: 74,
-                        height: 74,
-                        child: FilledButton(
-                          onPressed: _capture,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF075DBA),
-                            shape: const CircleBorder(),
-                          ),
-                          child: _isCapturing
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.camera_alt_rounded, size: 30),
+                    right: 20,
+                    bottom: 22,
+                    child: SizedBox(
+                      width: 74,
+                      height: 74,
+                      child: FilledButton(
+                        onPressed: _capture,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF075DBA),
+                          shape: const CircleBorder(),
                         ),
+                        child: _isCapturing
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.camera_alt_rounded, size: 30),
                       ),
                     ),
                   ),
@@ -212,15 +211,16 @@ class _PropertyCardGuide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: FractionallySizedBox(
-        widthFactor: .9,
-        heightFactor: .78,
-        child: FittedBox(
-          fit: BoxFit.contain,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth * .92;
+        final maxHeight = constraints.maxHeight * .86;
+        final width = math.min(maxWidth, maxHeight * 1.58);
+        return Align(
+          alignment: const Alignment(0, -.05),
           child: SizedBox(
-            width: 158,
-            height: 100,
+            width: width,
+            height: width / 1.58,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 border: Border.all(color: const Color(0xFF67B7FF), width: 3),
@@ -235,8 +235,10 @@ class _PropertyCardGuide extends StatelessWidget {
                   padding: EdgeInsets.only(top: 12),
                   child: Text(
                     'TARJETA COMPLETA Y LEGIBLE',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                       letterSpacing: .5,
                       shadows: [Shadow(color: Colors.black, blurRadius: 6)],
@@ -246,8 +248,8 @@ class _PropertyCardGuide extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
