@@ -7,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../auth/auth_models.dart';
 import 'brand_dropdown_field.dart';
-import 'property_card_camera_page.dart';
 import 'property_card_image_quality.dart';
 import 'property_card_ocr.dart';
 import 'vehicle_models.dart';
@@ -961,14 +960,7 @@ class _VehicleFormState extends State<_VehicleForm> {
         return;
       }
 
-      if (!mounted) return;
-
-      final photoPath = await Navigator.of(context).push<String>(
-        MaterialPageRoute(builder: (_) => const PropertyCardCameraPage()),
-      );
-      if (photoPath != null) {
-        await _readPickedPropertyCard(photoPath, deleteTemporaryFile: true);
-      }
+      await _pickPropertyCard(ImageSource.camera, deleteTemporaryFile: true);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -987,14 +979,7 @@ class _VehicleFormState extends State<_VehicleForm> {
   Future<void> _choosePropertyCardImage() async {
     setState(() => _capturingPropertyCard = true);
     try {
-      final photo = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 2048,
-      );
-      if (photo != null) {
-        await _readPickedPropertyCard(photo.path, deleteTemporaryFile: false);
-      }
+      await _pickPropertyCard(ImageSource.gallery, deleteTemporaryFile: false);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1010,10 +995,17 @@ class _VehicleFormState extends State<_VehicleForm> {
     }
   }
 
-  Future<void> _readPickedPropertyCard(
-    String imagePath, {
+  Future<void> _pickPropertyCard(
+    ImageSource source, {
     required bool deleteTemporaryFile,
   }) async {
+    final photo = await _imagePicker.pickImage(
+      source: source,
+      imageQuality: 95,
+      maxWidth: 3072,
+    );
+    if (photo == null) return;
+    final imagePath = photo.path;
     try {
       final bytes = await File(imagePath).readAsBytes();
       if (mounted) {
@@ -1433,7 +1425,7 @@ class _PropertyCardCaptureCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Alinea la tarjeta completa, sin reflejos y con buena luz. Puedes tomar o seleccionar una foto; se procesa solo en este formulario y no se envía al servidor.',
+            'Toma la foto lo más cerca posible: la tarjeta debe verse nítida, con buena luz y sin reflejos. Puedes tomar o seleccionar una imagen; se procesa solo en este formulario y no se envía al servidor.',
             style: TextStyle(color: Color(0xFF5E6A7D), height: 1.3),
           ),
           if (imageBytes != null) ...[
