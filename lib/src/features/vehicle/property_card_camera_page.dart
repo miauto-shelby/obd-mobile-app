@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// A local-only capture screen. It returns a temporary file path to the form;
 /// persistence and OCR remain the responsibility of the caller.
@@ -22,8 +23,14 @@ class _PropertyCardCameraPageState extends State<PropertyCardCameraPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _lockLandscape();
     _initializeCamera();
   }
+
+  Future<void> _lockLandscape() => SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
 
   Future<void> _initializeCamera() async {
     try {
@@ -37,7 +44,7 @@ class _PropertyCardCameraPageState extends State<PropertyCardCameraPage>
       );
       final controller = CameraController(
         _description!,
-        ResolutionPreset.high,
+        ResolutionPreset.veryHigh,
         enableAudio: false,
       );
       _controller = controller;
@@ -106,6 +113,7 @@ class _PropertyCardCameraPageState extends State<PropertyCardCameraPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
@@ -129,63 +137,71 @@ class _PropertyCardCameraPageState extends State<PropertyCardCameraPage>
       ),
       body: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: initialized
-                    ? Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          _FullCameraPreview(controller: controller!),
-                          const _PropertyCardGuide(),
-                        ],
-                      )
-                    : _CameraLoading(error: _error),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 26),
-              child: Column(
+        child: initialized
+            ? Stack(
+                fit: StackFit.expand,
                 children: [
-                  const Text(
-                    'Ubica los cuatro bordes dentro del marco. Evita reflejos, sombras y texto cortado.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFFD7E1F2), height: 1.35),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      _error!,
+                  _FullCameraPreview(controller: controller!),
+                  const _PropertyCardGuide(),
+                  const Positioned(
+                    top: 14,
+                    left: 24,
+                    right: 24,
+                    child: Text(
+                      'Ubica los cuatro bordes dentro del marco. Evita reflejos, sombras y texto cortado.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFFFFC1BB)),
-                    ),
-                  ],
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: 74,
-                    height: 74,
-                    child: FilledButton(
-                      onPressed: initialized ? _capture : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF075DBA),
-                        shape: const CircleBorder(),
+                      style: TextStyle(
+                        color: Color(0xFFE7F1FF),
+                        height: 1.3,
+                        shadows: [Shadow(color: Colors.black, blurRadius: 6)],
                       ),
-                      child: _isCapturing
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.camera_alt_rounded, size: 30),
+                    ),
+                  ),
+                  if (_error != null)
+                    Positioned(
+                      left: 24,
+                      right: 24,
+                      bottom: 100,
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFFFC1BB),
+                          shadows: [Shadow(color: Colors.black, blurRadius: 6)],
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    bottom: 18,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: SizedBox(
+                        width: 74,
+                        height: 74,
+                        child: FilledButton(
+                          onPressed: _capture,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF075DBA),
+                            shape: const CircleBorder(),
+                          ),
+                          child: _isCapturing
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.camera_alt_rounded, size: 30),
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ),
-          ],
-        ),
+              )
+            : _CameraLoading(error: _error),
       ),
     );
   }
@@ -198,28 +214,33 @@ class _PropertyCardGuide extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: FractionallySizedBox(
-        widthFactor: .93,
-        child: AspectRatio(
-          aspectRatio: 1.58,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF67B7FF), width: 3),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(color: Color(0x55000000), blurRadius: 18),
-              ],
-            ),
-            child: const Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Text(
-                  'TARJETA COMPLETA Y LEGIBLE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: .5,
-                    shadows: [Shadow(color: Colors.black, blurRadius: 6)],
+        widthFactor: .9,
+        heightFactor: .78,
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: 158,
+            height: 100,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFF67B7FF), width: 3),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x55000000), blurRadius: 18),
+                ],
+              ),
+              child: const Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Text(
+                    'TARJETA COMPLETA Y LEGIBLE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: .5,
+                      shadows: [Shadow(color: Colors.black, blurRadius: 6)],
+                    ),
                   ),
                 ),
               ),
