@@ -40,7 +40,7 @@ class _BrandDropdownFieldState extends State<BrandDropdownField> {
           );
         }
         if (snapshot.hasError) {
-          return _errorField();
+          return _errorField(snapshot.error);
         }
         final brands = snapshot.data ?? const <String>[];
         final selected = brands.contains(widget.controller.text)
@@ -93,13 +93,26 @@ class _BrandDropdownFieldState extends State<BrandDropdownField> {
     );
   }
 
-  Widget _errorField() => Padding(
+  Widget _errorField(Object? error) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: OutlinedButton.icon(
-      onPressed: () =>
-          setState(() => _brands = widget.service.listBrands(widget.session)),
-      icon: const Icon(Icons.refresh_rounded),
-      label: const Text('No fue posible cargar las marcas. Reintentar'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () => setState(
+            () => _brands = widget.service.listBrands(widget.session),
+          ),
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('No fue posible cargar las marcas. Reintentar'),
+        ),
+        if (error is VehicleException) ...[
+          const SizedBox(height: 6),
+          Text(
+            error.message,
+            style: const TextStyle(color: Color(0xFF9B3A2D), fontSize: 12),
+          ),
+        ],
+      ],
     ),
   );
 

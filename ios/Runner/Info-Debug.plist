@@ -39,6 +39,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>My Auto usa la cámara para leer de forma asistida los datos de la tarjeta de propiedad. La foto no se envía al servidor.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>My Auto permite seleccionar una imagen de la tarjeta para leer sus datos localmente. La imagen no se envía al servidor.</string>
 	<key>GIDClientID</key>
 	<string>1001362850388-i7iejokj5t2r5b6pcqiah38r0hmpvc0.apps.googleusercontent.com</string>
 	<key>GIDServerClientID</key>

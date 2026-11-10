@@ -7,6 +7,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../auth/auth_models.dart';
 import 'brand_dropdown_field.dart';
+import 'property_card_image_quality.dart';
+import 'property_card_ocr.dart';
 import 'vehicle_models.dart';
 import 'vehicle_service.dart';
 
@@ -877,9 +879,13 @@ class _VehicleFormState extends State<_VehicleForm> {
   final _fuelType = TextEditingController();
   final _transmission = TextEditingController();
   final _imagePicker = ImagePicker();
+  final _propertyCardOcr = PropertyCardOcrService();
   var _saving = false;
   var _capturingPropertyCard = false;
+  var _readingPropertyCard = false;
   Uint8List? _propertyCardImage;
+  String? _propertyCardMessage;
+  String? _propertyCardQualityHint;
   String? _activeHelp;
   String? _plateServerError;
   String? _vinServerError;
@@ -954,24 +960,7 @@ class _VehicleFormState extends State<_VehicleForm> {
         return;
       }
 
-      final photo = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 85,
-        maxWidth: 2048,
-      );
-      if (photo == null) return;
-
-      final bytes = await photo.readAsBytes();
-      try {
-        await File(photo.path).delete();
-      } catch (_) {
-        // The picker cache is managed by the operating system if it cannot be
-        // removed immediately. The app never persists or uploads the image.
-      }
-
-      if (mounted) {
-        setState(() => _propertyCardImage = bytes);
-      }
+      await _pickPropertyCard(ImageSource.camera, deleteTemporaryFile: true);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -984,6 +973,124 @@ class _VehicleFormState extends State<_VehicleForm> {
       }
     } finally {
       if (mounted) setState(() => _capturingPropertyCard = false);
+    }
+  }
+
+  Future<void> _choosePropertyCardImage() async {
+    setState(() => _capturingPropertyCard = true);
+    try {
+      await _pickPropertyCard(ImageSource.gallery, deleteTemporaryFile: false);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No fue posible seleccionar la imagen. Puedes usar la cámara o diligenciar el formulario manualmente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _capturingPropertyCard = false);
+    }
+  }
+
+  Future<void> _pickPropertyCard(
+    ImageSource source, {
+    required bool deleteTemporaryFile,
+  }) async {
+    final photo = await _imagePicker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 2048,
+    );
+    if (photo == null) return;
+
+    try {
+      final bytes = await photo.readAsBytes();
+      if (mounted) {
+        setState(() {
+          _propertyCardImage = bytes;
+          _propertyCardQualityHint = PropertyCardImageQuality.evaluate(bytes);
+          _propertyCardMessage =
+              _propertyCardQualityHint ?? 'Leyendo los datos de la tarjeta…';
+          _readingPropertyCard = true;
+        });
+      }
+      await _readPropertyCard(photo.path);
+    } finally {
+      if (deleteTemporaryFile) {
+        try {
+          await File(photo.path).delete();
+        } catch (_) {
+          // The picker cache is managed by the operating system if it cannot
+          // be removed immediately. The app never persists or uploads it.
+        }
+      }
+    }
+  }
+
+  Future<void> _readPropertyCard(String imagePath) async {
+    try {
+      List<String> brands = const [];
+      try {
+        brands = await widget.service.listBrands(widget.session);
+      } catch (_) {
+        // Plate, VIN and year can still be proposed when the catalog is offline.
+      }
+      final draft = await _propertyCardOcr.read(
+        imagePath: imagePath,
+        activeBrands: brands,
+      );
+      if (!mounted) return;
+
+      debugPrint(
+        '[OCR] proposal plate=${draft.plate != null} vin=${draft.vin != null} brand=${draft.brand != null} model=${draft.model != null} year=${draft.year != null} engine=${draft.engine != null} fuel=${draft.fuelType != null}',
+      );
+
+      setState(() {
+        _applyOcrDraft(draft);
+        _readingPropertyCard = false;
+        _propertyCardMessage = draft.hasUsefulData
+            ? 'Se propusieron ${draft.detectedFields} dato(s). Revisa cada campo antes de guardar.'
+            : 'No se identificaron datos confiables. Toma otra foto clara o completa el formulario manualmente.';
+        if (_propertyCardQualityHint != null) {
+          _propertyCardMessage =
+              '$_propertyCardMessage\n$_propertyCardQualityHint';
+        }
+      });
+      _formKey.currentState?.validate();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _readingPropertyCard = false;
+        _propertyCardMessage =
+            'No fue posible leer la tarjeta. Puedes tomar otra foto o diligenciar los datos manualmente.';
+      });
+    }
+  }
+
+  void _applyOcrDraft(PropertyCardOcrDraft draft) {
+    if (_plate.text.trim().isEmpty && draft.plate != null) {
+      _plate.text = draft.plate!;
+    }
+    if (_vin.text.trim().isEmpty && draft.vin != null) {
+      _vin.text = draft.vin!;
+    }
+    if (_brand.text.trim().isEmpty && draft.brand != null) {
+      _brand.text = draft.brand!;
+    }
+    if (_model.text.trim().isEmpty && draft.model != null) {
+      _model.text = draft.model!;
+    }
+    if (_year.text.trim().isEmpty && draft.year != null) {
+      _year.text = draft.year!;
+    }
+    if (_engine.text.trim().isEmpty && draft.engine != null) {
+      _engine.text = draft.engine!;
+    }
+    if (_fuelType.text.trim().isEmpty && draft.fuelType != null) {
+      _fuelType.text = draft.fuelType!;
     }
   }
 
@@ -1048,10 +1155,17 @@ class _VehicleFormState extends State<_VehicleForm> {
                     _PropertyCardCaptureCard(
                       imageBytes: _propertyCardImage,
                       isCapturing: _capturingPropertyCard,
+                      isReading: _readingPropertyCard,
+                      message: _propertyCardMessage,
                       onCapture: _capturePropertyCard,
+                      onChooseImage: _choosePropertyCardImage,
                       onDiscard: _propertyCardImage == null
                           ? null
-                          : () => setState(() => _propertyCardImage = null),
+                          : () => setState(() {
+                              _propertyCardImage = null;
+                              _propertyCardMessage = null;
+                              _propertyCardQualityHint = null;
+                            }),
                     ),
                     const SizedBox(height: 20),
                     _field(
@@ -1103,6 +1217,7 @@ class _VehicleFormState extends State<_VehicleForm> {
                           'Es el número de identificación de 17 caracteres del vehículo.',
                     ),
                     BrandDropdownField(
+                      key: ValueKey(_brand.text),
                       session: widget.session,
                       service: widget.service,
                       controller: _brand,
@@ -1267,13 +1382,19 @@ class _PropertyCardCaptureCard extends StatelessWidget {
   const _PropertyCardCaptureCard({
     required this.imageBytes,
     required this.isCapturing,
+    required this.isReading,
+    required this.message,
     required this.onCapture,
+    required this.onChooseImage,
     required this.onDiscard,
   });
 
   final Uint8List? imageBytes;
   final bool isCapturing;
+  final bool isReading;
+  final String? message;
   final VoidCallback onCapture;
+  final VoidCallback onChooseImage;
   final VoidCallback? onDiscard;
 
   @override
@@ -1304,7 +1425,7 @@ class _PropertyCardCaptureCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Toma una foto clara. La imagen se mantiene solo en este formulario y no se envía al servidor.',
+            'Alinea la tarjeta completa, sin reflejos y con buena luz. Puedes tomar o seleccionar una foto; se procesa solo en este formulario y no se envía al servidor.',
             style: TextStyle(color: Color(0xFF5E6A7D), height: 1.3),
           ),
           if (imageBytes != null) ...[
@@ -1319,9 +1440,10 @@ class _PropertyCardCaptureCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Foto lista. La lectura automática se agregará en el siguiente paso; por ahora revisa o completa los campos manualmente.',
-              style: TextStyle(
+            Text(
+              message ??
+                  'Foto lista. Revisa o completa los campos antes de guardar.',
+              style: const TextStyle(
                 color: Color(0xFF536076),
                 fontSize: 13,
                 height: 1.3,
@@ -1329,11 +1451,19 @@ class _PropertyCardCaptureCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               OutlinedButton.icon(
-                onPressed: isCapturing ? null : onCapture,
-                icon: isCapturing
+                onPressed: isCapturing || isReading ? null : onCapture,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF075DBA),
+                  disabledForegroundColor: const Color(0xFF5E6A7D),
+                  side: const BorderSide(color: Color(0xFF075DBA)),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                icon: isCapturing || isReading
                     ? const SizedBox(
                         width: 18,
                         height: 18,
@@ -1341,11 +1471,25 @@ class _PropertyCardCaptureCard extends StatelessWidget {
                       )
                     : const Icon(Icons.camera_alt_outlined),
                 label: Text(
-                  imageBytes == null ? 'Usar cámara' : 'Tomar otra foto',
+                  isReading
+                      ? 'Leyendo…'
+                      : imageBytes == null
+                      ? 'Usar cámara'
+                      : 'Tomar otra foto',
                 ),
               ),
+              OutlinedButton.icon(
+                onPressed: isCapturing || isReading ? null : onChooseImage,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF075DBA),
+                  disabledForegroundColor: const Color(0xFF5E6A7D),
+                  side: const BorderSide(color: Color(0xFF075DBA)),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Seleccionar imagen'),
+              ),
               if (onDiscard != null) ...[
-                const SizedBox(width: 8),
                 TextButton(
                   onPressed: onDiscard,
                   child: const Text('Descartar'),
