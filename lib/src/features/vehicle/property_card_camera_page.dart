@@ -134,15 +134,12 @@ class _PropertyCardCameraPageState extends State<PropertyCardCameraPage>
             Expanded(
               child: Center(
                 child: initialized
-                    ? AspectRatio(
-                        aspectRatio: controller!.value.aspectRatio,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            CameraPreview(controller),
-                            const _PropertyCardGuide(),
-                          ],
-                        ),
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          _FullCameraPreview(controller: controller!),
+                          const _PropertyCardGuide(),
+                        ],
                       )
                     : _CameraLoading(error: _error),
               ),
@@ -201,7 +198,7 @@ class _PropertyCardGuide extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: FractionallySizedBox(
-        widthFactor: .86,
+        widthFactor: .93,
         child: AspectRatio(
           aspectRatio: 1.58,
           child: DecoratedBox(
@@ -228,6 +225,31 @@ class _PropertyCardGuide extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Makes the live preview cover the available portrait space. The picture
+/// itself still uses the camera's high-resolution capture, independently of
+/// how it is fitted on screen.
+class _FullCameraPreview extends StatelessWidget {
+  const _FullCameraPreview({required this.controller});
+
+  final CameraController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final previewSize = controller.value.previewSize;
+    if (previewSize == null) return CameraPreview(controller);
+    return ClipRect(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: previewSize.height,
+          height: previewSize.width,
+          child: CameraPreview(controller),
         ),
       ),
     );
