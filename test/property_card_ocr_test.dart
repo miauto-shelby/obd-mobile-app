@@ -266,5 +266,28 @@ void main() {
       expect(draft.engine, '1.498 CC');
       expect(draft.vin, 'LSJA16E34DG000084');
     });
+
+    test('reads a cilindraje printed below the CILINDRADA CC heading', () {
+      const text = '''
+        PLACA NDR423
+        CILINDRADA CC
+        1.498
+        MARCA MG
+        LINEA MG 350
+        MODELO 2013
+        COMBUSTIBLE GASOLINA
+      ''';
+
+      final draft = PropertyCardOcrParser.parse(
+        text,
+        activeBrands: const ['MG'],
+      );
+
+      expect(draft.plate, 'NDR423');
+      expect(draft.brand, 'MG');
+      expect(draft.model, 'MG 350');
+      expect(draft.year, '2013');
+      expect(draft.engine, '1.498 CC');
+    });
   });
 }

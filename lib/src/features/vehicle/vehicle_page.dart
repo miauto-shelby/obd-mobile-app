@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../auth/auth_models.dart';
 import 'brand_dropdown_field.dart';
+import 'property_card_camera_page.dart';
 import 'property_card_image_quality.dart';
 import 'property_card_ocr.dart';
 import 'vehicle_models.dart';
@@ -960,7 +961,14 @@ class _VehicleFormState extends State<_VehicleForm> {
         return;
       }
 
-      await _pickPropertyCard(ImageSource.camera, deleteTemporaryFile: true);
+      if (!mounted) return;
+
+      final photoPath = await Navigator.of(context).push<String>(
+        MaterialPageRoute(builder: (_) => const PropertyCardCameraPage()),
+      );
+      if (photoPath != null) {
+        await _readPickedPropertyCard(photoPath, deleteTemporaryFile: true);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -979,7 +987,14 @@ class _VehicleFormState extends State<_VehicleForm> {
   Future<void> _choosePropertyCardImage() async {
     setState(() => _capturingPropertyCard = true);
     try {
-      await _pickPropertyCard(ImageSource.gallery, deleteTemporaryFile: false);
+      final photo = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 2048,
+      );
+      if (photo != null) {
+        await _readPickedPropertyCard(photo.path, deleteTemporaryFile: false);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -995,19 +1010,12 @@ class _VehicleFormState extends State<_VehicleForm> {
     }
   }
 
-  Future<void> _pickPropertyCard(
-    ImageSource source, {
+  Future<void> _readPickedPropertyCard(
+    String imagePath, {
     required bool deleteTemporaryFile,
   }) async {
-    final photo = await _imagePicker.pickImage(
-      source: source,
-      imageQuality: 85,
-      maxWidth: 2048,
-    );
-    if (photo == null) return;
-
     try {
-      final bytes = await photo.readAsBytes();
+      final bytes = await File(imagePath).readAsBytes();
       if (mounted) {
         setState(() {
           _propertyCardImage = bytes;
@@ -1017,11 +1025,11 @@ class _VehicleFormState extends State<_VehicleForm> {
           _readingPropertyCard = true;
         });
       }
-      await _readPropertyCard(photo.path);
+      await _readPropertyCard(imagePath);
     } finally {
       if (deleteTemporaryFile) {
         try {
-          await File(photo.path).delete();
+          await File(imagePath).delete();
         } catch (_) {
           // The picker cache is managed by the operating system if it cannot
           // be removed immediately. The app never persists or uploads it.
