@@ -1161,11 +1161,20 @@ class _VehicleFormState extends State<_VehicleForm> {
                       onChooseImage: _choosePropertyCardImage,
                       onDiscard: _propertyCardImage == null
                           ? null
-                          : () => setState(() {
-                              _propertyCardImage = null;
-                              _propertyCardMessage = null;
-                              _propertyCardQualityHint = null;
-                            }),
+                          : () {
+                              setState(() {
+                                _propertyCardImage = null;
+                                _propertyCardMessage = null;
+                                _propertyCardQualityHint = null;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Foto eliminada. Los datos leídos se conservan para que los revises.',
+                                  ),
+                                ),
+                              );
+                            },
                     ),
                     const SizedBox(height: 20),
                     _field(
@@ -1492,7 +1501,11 @@ class _PropertyCardCaptureCard extends StatelessWidget {
               if (onDiscard != null) ...[
                 TextButton(
                   onPressed: onDiscard,
-                  child: const Text('Descartar'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF075DBA),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  child: const Text('Quitar foto'),
                 ),
               ],
             ],
