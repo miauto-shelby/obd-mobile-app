@@ -1,8 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../auth/auth_models.dart';
 import 'brand_dropdown_field.dart';
+import 'property_card_image_quality.dart';
+import 'property_card_ocr.dart';
 import 'vehicle_models.dart';
 import 'vehicle_service.dart';
 
@@ -872,7 +878,14 @@ class _VehicleFormState extends State<_VehicleForm> {
   final _engine = TextEditingController();
   final _fuelType = TextEditingController();
   final _transmission = TextEditingController();
+  final _imagePicker = ImagePicker();
+  final _propertyCardOcr = PropertyCardOcrService();
   var _saving = false;
+  var _capturingPropertyCard = false;
+  var _readingPropertyCard = false;
+  Uint8List? _propertyCardImage;
+  String? _propertyCardMessage;
+  String? _propertyCardQualityHint;
   String? _activeHelp;
   String? _plateServerError;
   String? _vinServerError;
@@ -934,6 +947,183 @@ class _VehicleFormState extends State<_VehicleForm> {
     }
   }
 
+  Future<void> _capturePropertyCard() async {
+    setState(() => _capturingPropertyCard = true);
+    try {
+      var permission = await Permission.camera.status;
+      if (!permission.isGranted) {
+        permission = await Permission.camera.request();
+      }
+
+      if (!permission.isGranted) {
+        if (mounted) _showCameraPermissionMessage(permission);
+        return;
+      }
+
+      await _pickPropertyCard(ImageSource.camera, deleteTemporaryFile: true);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No fue posible abrir la cámara. Puedes diligenciar el formulario manualmente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _capturingPropertyCard = false);
+    }
+  }
+
+  Future<void> _choosePropertyCardImage() async {
+    setState(() => _capturingPropertyCard = true);
+    try {
+      await _pickPropertyCard(ImageSource.gallery, deleteTemporaryFile: false);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No fue posible seleccionar la imagen. Puedes usar la cámara o diligenciar el formulario manualmente.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _capturingPropertyCard = false);
+    }
+  }
+
+  Future<void> _pickPropertyCard(
+    ImageSource source, {
+    required bool deleteTemporaryFile,
+  }) async {
+    final photo = await _imagePicker.pickImage(
+      source: source,
+      imageQuality: 95,
+      maxWidth: 3072,
+    );
+    if (photo == null) return;
+    final imagePath = photo.path;
+    try {
+      final bytes = await File(imagePath).readAsBytes();
+      if (mounted) {
+        setState(() {
+          _propertyCardImage = bytes;
+          _propertyCardQualityHint = PropertyCardImageQuality.evaluate(bytes);
+          _propertyCardMessage =
+              _propertyCardQualityHint ?? 'Leyendo los datos de la tarjeta…';
+          _readingPropertyCard = true;
+        });
+      }
+      await _readPropertyCard(imagePath);
+    } finally {
+      if (deleteTemporaryFile) {
+        try {
+          await File(imagePath).delete();
+        } catch (_) {
+          // The picker cache is managed by the operating system if it cannot
+          // be removed immediately. The app never persists or uploads it.
+        }
+      }
+    }
+  }
+
+  Future<void> _readPropertyCard(String imagePath) async {
+    try {
+      List<String> brands = const [];
+      try {
+        brands = await widget.service.listBrands(widget.session);
+      } catch (_) {
+        // Plate, VIN and year can still be proposed when the catalog is offline.
+      }
+      final draft = await _propertyCardOcr.read(
+        imagePath: imagePath,
+        activeBrands: brands,
+      );
+      if (!mounted) return;
+
+      debugPrint(
+        '[OCR] proposal plate=${draft.plate != null} vin=${draft.vin != null} brand=${draft.brand != null} model=${draft.model != null} year=${draft.year != null} engine=${draft.engine != null} fuel=${draft.fuelType != null}',
+      );
+
+      setState(() {
+        _applyOcrDraft(draft);
+        _readingPropertyCard = false;
+        _propertyCardMessage = draft.hasUsefulData
+            ? 'Se propusieron ${draft.detectedFields} dato(s). Revisa cada campo antes de guardar.'
+            : 'No se identificaron datos confiables. Toma otra foto clara o completa el formulario manualmente.';
+        if (_propertyCardQualityHint != null) {
+          _propertyCardMessage =
+              '$_propertyCardMessage\n$_propertyCardQualityHint';
+        }
+      });
+      _formKey.currentState?.validate();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _readingPropertyCard = false;
+        _propertyCardMessage =
+            'No fue posible leer la tarjeta. Puedes tomar otra foto o diligenciar los datos manualmente.';
+      });
+    }
+  }
+
+  void _applyOcrDraft(PropertyCardOcrDraft draft) {
+    if (_plate.text.trim().isEmpty && draft.plate != null) {
+      _plate.text = draft.plate!;
+    }
+    if (_vin.text.trim().isEmpty && draft.vin != null) {
+      _vin.text = draft.vin!;
+    }
+    if (_brand.text.trim().isEmpty && draft.brand != null) {
+      _brand.text = draft.brand!;
+    }
+    if (_model.text.trim().isEmpty && draft.model != null) {
+      _model.text = draft.model!;
+    }
+    if (_year.text.trim().isEmpty && draft.year != null) {
+      _year.text = draft.year!;
+    }
+    if (_engine.text.trim().isEmpty && draft.engine != null) {
+      _engine.text = draft.engine!;
+    }
+    if (_fuelType.text.trim().isEmpty && draft.fuelType != null) {
+      _fuelType.text = draft.fuelType!;
+    }
+  }
+
+  void _showCameraPermissionMessage(PermissionStatus permission) {
+    final permanentlyDenied =
+        permission.isPermanentlyDenied || permission.isRestricted;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Permiso de cámara'),
+        content: Text(
+          permanentlyDenied
+              ? 'My Auto necesita acceso a la cámara para leer la tarjeta de propiedad. Habilítalo en la configuración de la aplicación.'
+              : 'Sin permiso de cámara puedes continuar diligenciando los datos manualmente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Ahora no'),
+          ),
+          if (permanentlyDenied)
+            FilledButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await openAppSettings();
+              },
+              child: const Text('Abrir configuración'),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -960,6 +1150,31 @@ class _VehicleFormState extends State<_VehicleForm> {
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF172033),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    _PropertyCardCaptureCard(
+                      imageBytes: _propertyCardImage,
+                      isCapturing: _capturingPropertyCard,
+                      isReading: _readingPropertyCard,
+                      message: _propertyCardMessage,
+                      onCapture: _capturePropertyCard,
+                      onChooseImage: _choosePropertyCardImage,
+                      onDiscard: _propertyCardImage == null
+                          ? null
+                          : () {
+                              setState(() {
+                                _propertyCardImage = null;
+                                _propertyCardMessage = null;
+                                _propertyCardQualityHint = null;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Foto eliminada. Los datos leídos se conservan para que los revises.',
+                                  ),
+                                ),
+                              );
+                            },
                     ),
                     const SizedBox(height: 20),
                     _field(
@@ -1011,6 +1226,7 @@ class _VehicleFormState extends State<_VehicleForm> {
                           'Es el número de identificación de 17 caracteres del vehículo.',
                     ),
                     BrandDropdownField(
+                      key: ValueKey(_brand.text),
                       session: widget.session,
                       service: widget.service,
                       controller: _brand,
@@ -1168,6 +1384,135 @@ class _VehicleFormState extends State<_VehicleForm> {
   String? _optional(TextEditingController controller) {
     final value = controller.text.trim();
     return value.isEmpty ? null : value;
+  }
+}
+
+class _PropertyCardCaptureCard extends StatelessWidget {
+  const _PropertyCardCaptureCard({
+    required this.imageBytes,
+    required this.isCapturing,
+    required this.isReading,
+    required this.message,
+    required this.onCapture,
+    required this.onChooseImage,
+    required this.onDiscard,
+  });
+
+  final Uint8List? imageBytes;
+  final bool isCapturing;
+  final bool isReading;
+  final String? message;
+  final VoidCallback onCapture;
+  final VoidCallback onChooseImage;
+  final VoidCallback? onDiscard;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F7FF),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.document_scanner_outlined, color: Color(0xFF0677F9)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Leer tarjeta de propiedad',
+                  style: TextStyle(
+                    color: Color(0xFF172033),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Toma la foto lo más cerca posible: la tarjeta debe verse nítida, con buena luz y sin reflejos. Puedes tomar o seleccionar una imagen; se procesa solo en este formulario y no se envía al servidor.',
+            style: TextStyle(color: Color(0xFF5E6A7D), height: 1.3),
+          ),
+          if (imageBytes != null) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.memory(
+                imageBytes!,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message ??
+                  'Foto lista. Revisa o completa los campos antes de guardar.',
+              style: const TextStyle(
+                color: Color(0xFF536076),
+                fontSize: 13,
+                height: 1.3,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: isCapturing || isReading ? null : onCapture,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF075DBA),
+                  disabledForegroundColor: const Color(0xFF5E6A7D),
+                  side: const BorderSide(color: Color(0xFF075DBA)),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                icon: isCapturing || isReading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.camera_alt_outlined),
+                label: Text(
+                  isReading
+                      ? 'Leyendo…'
+                      : imageBytes == null
+                      ? 'Usar cámara'
+                      : 'Tomar otra foto',
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: isCapturing || isReading ? null : onChooseImage,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF075DBA),
+                  disabledForegroundColor: const Color(0xFF5E6A7D),
+                  side: const BorderSide(color: Color(0xFF075DBA)),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Seleccionar imagen'),
+              ),
+              if (onDiscard != null) ...[
+                TextButton(
+                  onPressed: onDiscard,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF075DBA),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  child: const Text('Quitar foto'),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

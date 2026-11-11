@@ -15,12 +15,7 @@ class VehicleService {
 
   Future<List<String>> listBrands(AuthSession session) async {
     try {
-      final response = await _client
-          .get(
-            Uri.parse('$apiBaseUrl/api/v1/vehicle-brands'),
-            headers: _headers(session),
-          )
-          .timeout(const Duration(seconds: 12));
+      final response = await _getBrandsWithRetry(session);
       final body = _decode(response.body);
       if (response.statusCode != 200) {
         throw _exceptionFor(
@@ -48,6 +43,23 @@ class VehicleService {
         VehicleErrorKind.network,
         'No fue posible cargar las marcas. Revisa tu red e inténtalo de nuevo.',
       );
+    }
+  }
+
+  Future<http.Response> _getBrandsWithRetry(AuthSession session) async {
+    final uri = Uri.parse('$apiBaseUrl/api/v1/vehicle-brands');
+    final headers = _headers(session);
+    try {
+      return await _client
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 12));
+    } on http.ClientException {
+      // ADB reverse and Docker can close an idle local socket. Retry once with
+      // the same authenticated request before asking the user to retry.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      return _client
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 12));
     }
   }
 

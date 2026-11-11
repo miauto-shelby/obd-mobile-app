@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>My Auto usa la cámara para leer de forma asistida los datos de la tarjeta de propiedad. La foto no se envía al servidor.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>My Auto permite seleccionar una imagen de la tarjeta para leer sus datos localmente. La imagen no se envía al servidor.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

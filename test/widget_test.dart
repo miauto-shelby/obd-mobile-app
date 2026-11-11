@@ -58,6 +58,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: HomePage(
           session: session,
           onLogout: () async {},
@@ -82,6 +83,7 @@ void main() {
     var logoutCalled = false;
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: HomePage(
           session: _session,
           onLogout: () async => logoutCalled = true,
@@ -109,6 +111,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: HomePage(
           session: _session,
           onLogout: () async {},
